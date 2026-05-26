@@ -1,15 +1,15 @@
-// Orchestration tests: drive the full lookup -> fetch -> verify -> verdict path
-// with a stubbed fetch, so the gateway/provenance/verdict logic is covered
-// without network access. Envelopes are reconstructed from the real vectors, so
-// the verification inside is genuine — only the transport is faked.
+// Orchestration tests: drive the full lookup -> fetch -> verify -> history ->
+// verdict path with a stubbed fetch, so the gateway/provenance/verdict/timeline
+// logic is covered without network access. Envelopes are reconstructed from the
+// real vectors, so the verification inside is genuine — only transport is faked.
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { checkProvenanceForHash } from "../src/provenance";
-import type { Envelope } from "../src/types";
+import { assessContinuity, checkProvenanceForHash } from "../src/provenance";
+import type { AssetEvent, Envelope } from "../src/types";
 
 interface Vector {
   inputs: { envelope_pre_signature: Record<string, unknown> };
@@ -32,24 +32,34 @@ function loadEnvelope(name: string): Envelope {
 const registered = loadEnvelope("envelope-asset-registered-01.json");
 const tampered = loadEnvelope("envelope-tamper-detected-01.json");
 
-// Hash of the registered (known-good) bytes, and of the observed (tampered) bytes.
 const REGISTERED_HASH = (registered.payload as { hash: string }).hash;
 const OBSERVED_HASH = (tampered.payload as { observed: { hash: string } }).observed.hash;
 
 const GATEWAY = "https://gw.example";
 
-// Build a fetch stub: GraphQL returns the given tx ids; /raw/<id> returns the
-// mapped envelope. A null graphqlEdges simulates a gateway/network failure.
+interface Edge {
+  id: string;
+  block?: { height: number; timestamp: number } | null;
+}
+
+// Routes the two GraphQL query shapes apart by body content (the asset-events
+// query references the Asset-Id tag; the hash-lookup query does not). hashEdges
+// === null simulates a gateway failure on the initial lookup.
 function stubFetch(opts: {
-  edges?: { id: string }[] | null;
+  hashEdges?: Edge[] | null;
+  assetEdges?: Edge[];
   envelopes?: Record<string, Envelope>;
 }): void {
   vi.stubGlobal("fetch", async (input: string | URL, init?: RequestInit) => {
     const url = typeof input === "string" ? input : input.toString();
     if (url.endsWith("/graphql")) {
-      void init;
-      if (opts.edges === null) return new Response("boom", { status: 502, statusText: "Bad Gateway" });
-      const edges = (opts.edges ?? []).map((n) => ({ node: { id: n.id, tags: [] } }));
+      const body = typeof init?.body === "string" ? init.body : "";
+      const isAssetQuery = body.includes("Asset-Id");
+      if (!isAssetQuery && opts.hashEdges === null) {
+        return new Response("boom", { status: 502, statusText: "Bad Gateway" });
+      }
+      const list = isAssetQuery ? (opts.assetEdges ?? []) : (opts.hashEdges ?? []);
+      const edges = list.map((n) => ({ node: { id: n.id, tags: [], block: n.block ?? null } }));
       return Response.json({ data: { transactions: { edges } } });
     }
     const m = /\/raw\/([^/]+)$/.exec(url);
@@ -65,44 +75,125 @@ function stubFetch(opts: {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("checkProvenanceForHash", () => {
-  it("returns provenance-found for bytes matching a verified asset_registered", async () => {
-    stubFetch({ edges: [{ id: "TX_REG" }], envelopes: { TX_REG: registered } });
+  it("returns provenance-found and builds the asset history", async () => {
+    stubFetch({
+      hashEdges: [{ id: "TX_REG" }],
+      assetEdges: [{ id: "TX_REG", block: { height: 1, timestamp: 1_700_000_000 } }],
+      envelopes: { TX_REG: registered },
+    });
     const report = await checkProvenanceForHash(REGISTERED_HASH, GATEWAY);
     expect(report.verdict).toBe("provenance-found");
     expect(report.matches).toHaveLength(1);
     expect(report.matches[0].role).toBe("asset");
-    expect(report.matches[0].verification.ok).toBe(true);
+    expect(report.histories).toHaveLength(1);
+    expect(report.histories[0].events).toHaveLength(1);
+    expect(report.histories[0].events[0].matchedRole).toBe("asset");
+    expect(report.histories[0].events[0].blockTimestamp).toBe(1_700_000_000);
     expect(report.rejected).toHaveLength(0);
   });
 
+  it("orders a multi-event timeline newest-first and binds the user's bytes to both roles", async () => {
+    // The user holds the known-good bytes: they are the registration content AND
+    // the baseline referenced by the later tamper event.
+    stubFetch({
+      hashEdges: [{ id: "TX_REG" }],
+      assetEdges: [
+        { id: "TX_TAMPER", block: { height: 20, timestamp: 1_700_002_000 } },
+        { id: "TX_REG", block: { height: 10, timestamp: 1_700_000_000 } },
+      ],
+      envelopes: { TX_REG: registered, TX_TAMPER: tampered },
+    });
+    const report = await checkProvenanceForHash(REGISTERED_HASH, GATEWAY);
+    expect(report.verdict).toBe("provenance-found");
+    expect(report.histories).toHaveLength(1);
+
+    const events = report.histories[0].events;
+    expect(events.map((e) => e.envelope.event_type)).toEqual(["tamper_detected", "asset_registered"]);
+    expect(events.find((e) => e.envelope.event_type === "asset_registered")?.matchedRole).toBe("asset");
+    expect(events.find((e) => e.envelope.event_type === "tamper_detected")?.matchedRole).toBe("baseline");
+    // Each chain has a single event here, so the whole history reads as linked.
+    expect(report.histories[0].continuity).toBe("linked");
+  });
+
   it("returns tampered-bytes when the bytes match a tamper Observed-Hash", async () => {
-    stubFetch({ edges: [{ id: "TX_TAMPER" }], envelopes: { TX_TAMPER: tampered } });
+    stubFetch({
+      hashEdges: [{ id: "TX_TAMPER" }],
+      assetEdges: [{ id: "TX_TAMPER", block: { height: 20, timestamp: 1_700_002_000 } }],
+      envelopes: { TX_TAMPER: tampered },
+    });
     const report = await checkProvenanceForHash(OBSERVED_HASH, GATEWAY);
     expect(report.verdict).toBe("tampered-bytes");
-    expect(report.matches[0].role).toBe("observed");
+    expect(report.histories[0].events[0].matchedRole).toBe("observed");
   });
 
   it("returns no-match when nothing references the hash", async () => {
-    stubFetch({ edges: [] });
+    stubFetch({ hashEdges: [] });
     const report = await checkProvenanceForHash("a".repeat(64), GATEWAY);
     expect(report.verdict).toBe("no-match");
-    expect(report.matches).toHaveLength(0);
+    expect(report.histories).toHaveLength(0);
   });
 
   it("returns error (not no-match) when the gateway lookup fails", async () => {
-    stubFetch({ edges: null });
+    stubFetch({ hashEdges: null });
     const report = await checkProvenanceForHash(REGISTERED_HASH, GATEWAY);
     expect(report.verdict).toBe("error");
     expect(report.error).toBeTruthy();
   });
 
   it("rejects a tag-matched candidate whose bytes do not actually bind", async () => {
-    // The gateway returns a tx (lying tag) whose envelope is about *other* bytes.
-    // The post-fetch content check must exclude it from the verdict.
-    stubFetch({ edges: [{ id: "TX_LIE" }], envelopes: { TX_LIE: registered } });
+    stubFetch({ hashEdges: [{ id: "TX_LIE" }], envelopes: { TX_LIE: registered } });
     const report = await checkProvenanceForHash("b".repeat(64), GATEWAY);
     expect(report.verdict).toBe("no-match");
     expect(report.rejected).toHaveLength(1);
     expect(report.rejected[0].txId).toBe("TX_LIE");
+  });
+});
+
+// Continuity is the riskiest logic (a false "broken chain" would imply tampering
+// where there is none), so test it directly and conservatively.
+describe("assessContinuity", () => {
+  function regEvent(payloadHash: string, previousHash: string): AssetEvent {
+    return {
+      txId: payloadHash.slice(0, 8),
+      envelope: {
+        event_type: "asset_registered",
+        payload_hash: payloadHash,
+        previous_hash: previousHash,
+      } as unknown as Envelope,
+      verification: {} as AssetEvent["verification"],
+      blockTimestamp: null,
+      blockHeight: null,
+      matchedRole: null,
+    };
+  }
+
+  it("reports 'single' for zero or one event", () => {
+    expect(assessContinuity([]).continuity).toBe("single");
+    expect(assessContinuity([regEvent("a".repeat(64), "GENESIS")]).continuity).toBe("single");
+  });
+
+  it("reports 'linked' for a fully-resolved GENESIS->A->B->C chain", () => {
+    const a = "a".repeat(64);
+    const b = "b".repeat(64);
+    const c = "c".repeat(64);
+    const events = [regEvent(a, "GENESIS"), regEvent(b, a), regEvent(c, b)];
+    expect(assessContinuity(events).continuity).toBe("linked");
+  });
+
+  it("reports 'partial' when an event references a record not in the set", () => {
+    const a = "a".repeat(64);
+    const c = "c".repeat(64);
+    const missingB = "b".repeat(64);
+    // a is GENESIS root; c points at missing b -> unresolved -> partial.
+    const events = [regEvent(a, "GENESIS"), regEvent(c, missingB)];
+    expect(assessContinuity(events).continuity).toBe("partial");
+  });
+
+  it("reports 'partial' when there is no single GENESIS root", () => {
+    const a = "a".repeat(64);
+    const b = "b".repeat(64);
+    // Two roots, neither GENESIS-anchored cleanly: a is GENESIS, b is GENESIS too.
+    const events = [regEvent(a, "GENESIS"), regEvent(b, "GENESIS")];
+    expect(assessContinuity(events).continuity).toBe("partial");
   });
 });

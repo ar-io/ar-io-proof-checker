@@ -197,6 +197,83 @@ h1 {
   color: #58a6ff;
 }
 
+.continuity {
+  font-size: 0.85rem;
+  margin: 0.3rem 0 0.7rem;
+}
+
+.continuity.ok {
+  color: var(--ok);
+}
+
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-left: 2px solid var(--border);
+}
+
+.event {
+  position: relative;
+  padding: 0.5rem 0 0.5rem 1rem;
+  margin-left: 0.25rem;
+}
+
+.event::before {
+  content: "";
+  position: absolute;
+  left: -7px;
+  top: 0.75rem;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--none);
+}
+
+.event-ok::before {
+  background: var(--ok);
+}
+.event-warn::before {
+  background: var(--warn);
+}
+
+.event-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.event-type-sm {
+  font-family: var(--mono);
+  font-weight: 700;
+}
+
+.event-when {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.you-badge {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text);
+  background: rgba(46, 160, 67, 0.18);
+  border: 1px solid var(--ok);
+  border-radius: 999px;
+  padding: 0.05rem 0.5rem;
+}
+
+.event-checks {
+  display: block;
+  font-size: 0.78rem;
+  margin: 0.15rem 0;
+}
+
+.event .tx-link {
+  font-size: 0.78rem;
+}
+
 .disclaimer {
   margin-top: 1rem;
   padding: 0.8rem 1rem;

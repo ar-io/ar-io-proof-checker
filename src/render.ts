@@ -7,6 +7,7 @@
 // live production version" or "this is safe." Keep that line crisp.
 
 import type { Match, ProvenanceReport, Verdict } from "./provenance";
+import type { AssetEvent, AssetHistory, ContentRole } from "./types";
 
 const VERDICT_COPY: Record<Verdict, { icon: string; title: string; tone: string }> = {
   "provenance-found": { icon: "✓", title: "Provenance found", tone: "ok" },
@@ -30,7 +31,22 @@ export function renderReport(report: ProvenanceReport): HTMLElement {
   switch (report.verdict) {
     case "provenance-found":
     case "tampered-bytes":
-      for (const m of report.matches) root.appendChild(renderMatch(m, report.gateway));
+      if (report.histories.length > 0) {
+        if (report.histories.length > 1) {
+          root.appendChild(
+            el(
+              "p",
+              "muted",
+              `Matched ${report.histories.length} assets (grouped by tenant / agent, newest first):`,
+            ),
+          );
+        }
+        for (const h of report.histories) root.appendChild(renderHistory(h, report.gateway));
+      } else {
+        // Timeline query failed but the direct match stands — never show a found
+        // verdict with no detail.
+        for (const m of report.matches) root.appendChild(renderBareMatch(m, report.gateway));
+      }
       root.appendChild(disclaimer(report.verdict));
       break;
     case "no-match":
@@ -45,32 +61,86 @@ export function renderReport(report: ProvenanceReport): HTMLElement {
   return root;
 }
 
-const ROLE_COPY: Record<Match["role"], string> = {
-  asset: "These bytes are the registered (known-good) content for this asset.",
-  baseline: "These bytes are the known-good baseline this event refers to.",
-  observed: "These bytes are the TAMPERED content that was flagged — not the known-good baseline.",
+// --- per-asset history (timeline) ------------------------------------------
+
+const ROLE_BADGE: Record<ContentRole, string> = {
+  asset: "← your file (registered content)",
+  baseline: "← your file (known-good baseline)",
+  observed: "← your file (the TAMPERED content)",
 };
 
-function renderMatch(m: Match, gateway: string): HTMLElement {
+const EVENT_TONE: Record<string, string> = {
+  asset_registered: "ok",
+  tamper_detected: "warn",
+  asset_missing: "warn",
+};
+
+function renderHistory(h: AssetHistory, gateway: string): HTMLElement {
   const card = el("div", "match");
-  const p = m.envelope;
 
   const head = el("div", "match-head");
-  head.appendChild(el("span", "event-type", p.event_type));
-  head.appendChild(el("span", "match-role", ROLE_COPY[m.role]));
+  head.appendChild(el("span", "event-type", h.assetId));
+  head.appendChild(el("span", "match-role", `tenant ${h.tenantId} · agent ${h.agentId}`));
   card.appendChild(head);
 
-  card.appendChild(kv("Tenant", p.subject.tenant_id));
-  card.appendChild(kv("Agent", p.subject.agent_id));
-  card.appendChild(kv("Signing key", p.public_key, "mono"));
-  card.appendChild(kv("Signed at", p.signed_at));
+  const cont = el("div", h.continuity === "linked" ? "continuity ok" : "continuity muted");
+  cont.textContent =
+    (h.continuity === "linked" ? "✓ " : "ⓘ ") +
+    `${h.events.length} event${h.events.length === 1 ? "" : "s"} — ${h.note}`;
+  card.appendChild(cont);
 
-  // The three checks that produced this verdict, shown explicitly.
-  const checks = el("ul", "checks");
-  checks.appendChild(check("Signature valid (Ed25519)", m.verification.signatureOk));
-  checks.appendChild(check("Payload hash matches", m.verification.payloadHashOk));
-  checks.appendChild(check("Your bytes match this record", m.verification.contentHashOk === true));
-  card.appendChild(checks);
+  const timeline = el("ol", "timeline");
+  for (const ev of h.events) timeline.appendChild(renderEvent(ev, gateway));
+  card.appendChild(timeline);
+
+  return card;
+}
+
+function renderEvent(ev: AssetEvent, gateway: string): HTMLElement {
+  const li = el("li", `event event-${EVENT_TONE[ev.envelope.event_type] ?? "none"}`);
+
+  const line = el("div", "event-line");
+  line.appendChild(el("span", "event-type-sm", ev.envelope.event_type));
+  line.appendChild(el("span", "event-when", formatWhen(ev)));
+  if (ev.matchedRole) {
+    line.appendChild(el("span", "you-badge", ROLE_BADGE[ev.matchedRole]));
+  }
+  li.appendChild(line);
+
+  const checks = el("span", "event-checks muted");
+  checks.textContent = "✓ signature  ✓ payload hash";
+  li.appendChild(checks);
+
+  const link = document.createElement("a");
+  link.className = "tx-link mono";
+  link.href = `${trimSlash(gateway)}/${ev.txId}`;
+  link.textContent = ev.txId;
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+  li.appendChild(link);
+
+  return li;
+}
+
+// Trusted Arweave block time when available; otherwise the advisory signed_at.
+function formatWhen(ev: AssetEvent): string {
+  if (ev.blockTimestamp !== null) {
+    return `${new Date(ev.blockTimestamp * 1000).toISOString()} (Arweave block time)`;
+  }
+  return `${ev.envelope.signed_at} (signed_at — advisory, agent clock)`;
+}
+
+// --- fallback bare match (timeline unavailable) ----------------------------
+
+function renderBareMatch(m: Match, gateway: string): HTMLElement {
+  const card = el("div", "match");
+  const p = m.envelope;
+  const head = el("div", "match-head");
+  head.appendChild(el("span", "event-type", p.event_type));
+  head.appendChild(el("span", "match-role", `tenant ${p.subject.tenant_id} · agent ${p.subject.agent_id}`));
+  card.appendChild(head);
+  card.appendChild(kv("Signing key", p.public_key, "mono"));
+  card.appendChild(kv("Signed at", `${p.signed_at} (advisory)`));
 
   const link = document.createElement("a");
   link.className = "tx-link mono";
@@ -79,9 +149,10 @@ function renderMatch(m: Match, gateway: string): HTMLElement {
   link.target = "_blank";
   link.rel = "noopener noreferrer";
   card.appendChild(kvNode("Transaction", link));
-
   return card;
 }
+
+// --- verdict prose ---------------------------------------------------------
 
 function disclaimer(verdict: Verdict): HTMLElement {
   const box = el("div", "disclaimer");
@@ -171,12 +242,6 @@ function kvNode(label: string, valueNode: Node): HTMLElement {
   v.appendChild(valueNode);
   row.appendChild(v);
   return row;
-}
-
-function check(label: string, ok: boolean): HTMLElement {
-  const li = el("li", ok ? "check-ok" : "check-fail");
-  li.textContent = `${ok ? "✓" : "✗"} ${label}`;
-  return li;
 }
 
 function trimSlash(url: string): string {

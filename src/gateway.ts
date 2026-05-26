@@ -69,6 +69,59 @@ export async function findEnvelopeTxs(gateway: string, hash: string): Promise<Tx
   return [...byId.values()];
 }
 
+export interface AssetEventTxRef extends TxRef {
+  // block is null while the tx is unmined; timestamp is unix seconds.
+  block: { height: number; timestamp: number } | null;
+}
+
+const ASSET_EVENTS_QUERY = `query ($tenant: String!, $agent: String!, $asset: String!) {
+  transactions(
+    tags: [
+      { name: "App-Name", values: ["ario-agent"] }
+      { name: "Tenant-Id", values: [$tenant] }
+      { name: "Agent-Id", values: [$agent] }
+      { name: "Asset-Id", values: [$asset] }
+    ]
+    first: 100
+    sort: HEIGHT_DESC
+  ) {
+    edges { node { id tags { name value } block { height timestamp } } }
+  }
+}`;
+
+interface AssetEventsResponse {
+  data?: { transactions?: { edges?: { node?: AssetEventTxRef }[] } };
+  errors?: { message?: string }[];
+}
+
+// Every event anchored for a given asset under one (tenant, agent): the
+// asset_registered chain plus the tamper_detected / asset_missing chain (all
+// carry the Asset-Id tag). verification_checkpoint events are per-agent and
+// carry no Asset-Id, so routine "verified" runs — which live as Merkle leaves
+// inside checkpoints — are not returned here by design.
+export async function findAssetEventTxs(
+  gateway: string,
+  tenantId: string,
+  agentId: string,
+  assetId: string,
+): Promise<AssetEventTxRef[]> {
+  const res = await fetch(`${trimSlash(gateway)}/graphql`, {
+    method: "POST",
+    headers: { "content-type": "application/json", accept: "application/json" },
+    body: JSON.stringify({
+      query: ASSET_EVENTS_QUERY,
+      variables: { tenant: tenantId, agent: agentId, asset: assetId },
+    }),
+  });
+  if (!res.ok) throw new Error(`gateway GraphQL ${res.status} ${res.statusText}`);
+  const body = (await res.json()) as AssetEventsResponse;
+  if (body.errors?.length) {
+    throw new Error(`gateway GraphQL error: ${body.errors.map((e) => e.message).join("; ")}`);
+  }
+  const edges = body.data?.transactions?.edges ?? [];
+  return edges.map((e) => e.node).filter((n): n is AssetEventTxRef => !!n?.id);
+}
+
 // Fetch the raw envelope bytes for a tx id and parse as JSON. No trust is placed
 // in the returned bytes here — verifyEnvelope decides whether they're authentic.
 export async function fetchEnvelope(gateway: string, txId: string): Promise<Envelope> {
