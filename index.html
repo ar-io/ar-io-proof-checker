@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ar.io proof checker — does this file have a verifiable history?</title>
+    <meta
+      name="description"
+      content="Drop a file in. It's hashed in your browser (never uploaded) and checked for a signed ar.io provenance record on Arweave."
+    />
+  </head>
+  <body>
+    <main class="app">
+      <header>
+        <h1>Proof checker</h1>
+        <p class="tagline">
+          Drop a file in. It is hashed <strong>in your browser</strong> — the bytes never leave
+          your machine — and checked against Arweave for a signed ar.io provenance record.
+        </p>
+      </header>
+
+      <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Choose or drop a file">
+        <p class="dropzone-main">Drop a file here, or click to choose</p>
+        <p class="dropzone-sub">Nothing is uploaded. Only the file's hash is sent, inside a query.</p>
+      </div>
+      <input id="file-input" type="file" hidden />
+
+      <label class="gateway-row">
+        <span>Gateway</span>
+        <input id="gateway" type="text" spellcheck="false" autocomplete="off" />
+      </label>
+
+      <div id="results" class="results" aria-live="polite"></div>
+
+      <footer>
+        <p>
+          This tool proves <strong>“this artifact has a verifiable history.”</strong> It does
+          <strong>not</strong> prove the file is the version currently in production, nor that it
+          is safe or approved. Verification runs entirely client-side against the public key inside
+          each envelope — no ar.io service is in the trust path.
+        </p>
+        <p class="muted">
+          Open source (MIT). Reverse lookup covers events anchored on or after the ar-io-agent
+          release that introduced content-hash tagging.
+        </p>
+      </footer>
+    </main>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

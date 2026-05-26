@@ -1,0 +1,23 @@
+name: ci
+
+# The conformance job is the load-bearing gate: the client-side verifier MUST
+# reproduce every ar-io-agent test vector byte-for-byte. A single mismatch fails
+# the build — same discipline as ar-io-agent's JCS / ANS-104 cross-products.
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - run: npm ci
+      - run: npm run typecheck
+      - name: Conformance + verifier tests (vectors must match byte-for-byte)
+        run: npm run test
+      - run: npm run build
