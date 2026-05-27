@@ -4,12 +4,14 @@
 
 import { checkProvenance } from "./provenance";
 import { DEFAULT_GATEWAY } from "./gateway";
-import { renderReport } from "./render";
+import { renderReport, renderReimport } from "./render";
+import { REPORT_SPEC, verifyReport, type ProofCheckReport } from "./report";
 import "./styles.css";
 
 const dropzone = byId("dropzone");
 const fileInput = byId<HTMLInputElement>("file-input");
 const gatewayInput = byId<HTMLInputElement>("gateway");
+const reportInput = byId<HTMLInputElement>("report-input");
 const results = byId("results");
 
 gatewayInput.value = DEFAULT_GATEWAY;
@@ -33,6 +35,28 @@ dropzone.addEventListener("drop", (e) => {
   if (file) void run(file);
 });
 
+reportInput.addEventListener("change", () => {
+  const file = reportInput.files?.[0];
+  if (file) void runReport(file);
+});
+
+async function runReport(file: File): Promise<void> {
+  results.replaceChildren(loadingMsg("Re-verifying saved report against its embedded envelopes (no network)…"));
+  try {
+    const parsed = JSON.parse(await file.text()) as ProofCheckReport;
+    if (parsed?.spec !== REPORT_SPEC) {
+      throw new Error("not an ar.io proof-checker report (spec mismatch)");
+    }
+    const verification = await verifyReport(parsed);
+    results.replaceChildren(renderReimport(parsed, verification));
+  } catch (e) {
+    const box = document.createElement("div");
+    box.className = "explain";
+    box.textContent = `Could not re-verify report: ${e instanceof Error ? e.message : String(e)}`;
+    results.replaceChildren(box);
+  }
+}
+
 async function run(file: File): Promise<void> {
   const gateway = gatewayInput.value.trim() || DEFAULT_GATEWAY;
   results.replaceChildren(loading(file.name));
@@ -50,9 +74,13 @@ async function run(file: File): Promise<void> {
 }
 
 function loading(filename: string): HTMLElement {
+  return loadingMsg(`Hashing "${filename}" in your browser and querying the gateway…`);
+}
+
+function loadingMsg(message: string): HTMLElement {
   const box = document.createElement("div");
   box.className = "loading";
-  box.textContent = `Hashing "${filename}" in your browser and querying the gateway…`;
+  box.textContent = message;
   return box;
 }
 

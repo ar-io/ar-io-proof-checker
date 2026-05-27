@@ -7,6 +7,13 @@
 // live production version" or "this is safe." Keep that line crisp.
 
 import type { Match, ProvenanceReport, Verdict } from "./provenance";
+import {
+  buildReport,
+  reportToHtml,
+  reportToJson,
+  type ProofCheckReport,
+  type ReportVerification,
+} from "./report";
 import type { AssetEvent, AssetHistory, ContentRole } from "./types";
 
 const VERDICT_COPY: Record<Verdict, { icon: string; title: string; tone: string }> = {
@@ -27,6 +34,10 @@ export function renderReport(report: ProvenanceReport): HTMLElement {
 
   root.appendChild(kv("Your file's SHA-256", report.fileHash, "mono"));
   root.appendChild(kv("Queried gateway", report.gateway));
+
+  // A check ran — let the user export it as evidence (any verdict, including
+  // no-match: "we checked and found nothing" is itself a recordable result).
+  if (report.verdict !== "error") root.appendChild(renderActions(report));
 
   switch (report.verdict) {
     case "provenance-found":
@@ -58,6 +69,85 @@ export function renderReport(report: ProvenanceReport): HTMLElement {
   }
 
   if (report.rejected.length > 0) root.appendChild(renderRejected(report));
+  return root;
+}
+
+// --- report export actions -------------------------------------------------
+
+function renderActions(report: ProvenanceReport): HTMLElement {
+  const bar = el("div", "actions");
+
+  const jsonBtn = document.createElement("button");
+  jsonBtn.className = "btn";
+  jsonBtn.textContent = "Download report (JSON)";
+  jsonBtn.addEventListener("click", () => {
+    const r = buildReport(report);
+    downloadBlob(`provenance-${report.fileHash.slice(0, 12)}.json`, reportToJson(r), "application/json");
+  });
+
+  const printBtn = document.createElement("button");
+  printBtn.className = "btn btn-secondary";
+  printBtn.textContent = "Open printable report";
+  printBtn.addEventListener("click", () => {
+    const r = buildReport(report);
+    const url = URL.createObjectURL(new Blob([reportToHtml(r)], { type: "text/html" }));
+    window.open(url, "_blank", "noopener");
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  });
+
+  bar.append(jsonBtn, printBtn);
+  return bar;
+}
+
+function downloadBlob(filename: string, content: string, mime: string): void {
+  const url = URL.createObjectURL(new Blob([content], { type: mime }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+// --- re-imported report verification ---------------------------------------
+
+// Renders the result of re-verifying a saved report against its own embedded
+// envelopes (no network). This is the "drop a report back in" trust path.
+export function renderReimport(report: ProofCheckReport, v: ReportVerification): HTMLElement {
+  const root = el("section", "report");
+
+  const tone = v.ok ? "ok" : "err";
+  const banner = el("div", `verdict verdict-${tone}`);
+  banner.appendChild(el("span", "verdict-icon", v.ok ? "✓" : "✗"));
+  banner.appendChild(
+    el("span", "verdict-title", v.ok ? "Report re-verified" : "Report FAILED re-verification"),
+  );
+  root.appendChild(banner);
+
+  root.appendChild(kv("File SHA-256", report.file_sha256, "mono"));
+  root.appendChild(kv("Stated verdict", report.verdict));
+  root.appendChild(kv("Recomputed verdict", v.recomputedVerdict));
+  if (!v.verdictMatches) {
+    root.appendChild(
+      el("div", "disclaimer", "⚠ The recomputed verdict does NOT match the report's stated verdict — treat this report as untrustworthy."),
+    );
+  }
+
+  const list = el("ul", "checks");
+  for (const r of v.results) {
+    const okRow = r.authentic;
+    const li = el("li", okRow ? "check-ok" : "check-fail");
+    li.textContent = `${okRow ? "✓" : "✗"} ${r.event_type} ${r.tx_id.slice(0, 12)}… — authentic: ${r.authentic}, your bytes: ${r.contentBound}${r.role ? ` (${r.role})` : ""}`;
+    list.appendChild(li);
+  }
+  root.appendChild(list);
+
+  root.appendChild(
+    el(
+      "div",
+      "disclaimer",
+      "ⓘ Re-verification re-ran the signature + payload-hash + content checks on the report's embedded envelopes locally — no gateway, no network. It confirms the report is internally consistent, not that the bytes are the live production version.",
+    ),
+  );
   return root;
 }
 

@@ -86,8 +86,54 @@ h1 {
   font-size: 0.85rem;
 }
 
+.reverify {
+  margin-top: 0.9rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.reverify summary {
+  cursor: pointer;
+}
+
+.reverify input[type="file"] {
+  margin-top: 0.5rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
 .results {
   margin-top: 1.5rem;
+}
+
+.actions {
+  display: flex;
+  gap: 0.6rem;
+  margin: 0.9rem 0 0.3rem;
+  flex-wrap: wrap;
+}
+
+.btn {
+  padding: 0.45rem 0.8rem;
+  border-radius: 6px;
+  border: 1px solid var(--ok);
+  background: rgba(46, 160, 67, 0.15);
+  color: var(--text);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.btn:hover {
+  background: rgba(46, 160, 67, 0.28);
+}
+
+.btn-secondary {
+  border-color: var(--border);
+  background: var(--panel);
+}
+
+.btn-secondary:hover {
+  background: #222b35;
 }
 
 .loading {

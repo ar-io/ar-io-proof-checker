@@ -30,6 +30,15 @@
         <input id="gateway" type="text" spellcheck="false" autocomplete="off" />
       </label>
 
+      <details class="reverify">
+        <summary>Verify a saved report</summary>
+        <p class="muted">
+          Re-check a previously downloaded JSON report against its own embedded envelopes —
+          no network, and no original file needed. Confirms the report is internally consistent.
+        </p>
+        <input id="report-input" type="file" accept="application/json,.json" />
+      </details>
+
       <div id="results" class="results" aria-live="polite"></div>
 
       <footer>

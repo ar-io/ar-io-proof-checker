@@ -85,6 +85,15 @@ vector byte-for-byte, or the build fails.
 > fully verifiable through the identifier-based flows (`ariod verify <tx_id>`); they
 > just won't surface in a hash-based search.
 
+## Exportable reports
+
+Every check can be exported as evidence:
+
+- **Download report (JSON)** — a versioned, typed `ario.proof-checker.report/v1` artifact. It embeds the **raw verified envelopes** and the file hash, so it is **self-verifiable offline**: anyone can re-run the same signature + payload-hash + content checks with any conformant verifier, and it can be dropped back into this tool ("Verify a saved report") to re-verify with no network and no original file.
+- **Open printable report** — a human-readable HTML view (Print → Save as PDF). On-chain-derived strings are HTML-escaped.
+
+Unlike `ar-io-verify`'s operator-signed `VerificationBundleV1`, this report is **unsigned by design** — the proof-checker has no signing identity and puts no service in the trust path. Its integrity comes from *re-verification*, not from trusting its issuer. The §scope disclaimers (verifiable-history ≠ live/safe; key identity is out-of-band; absence ≠ tampering) are embedded in the artifact so they travel with it.
+
 ## Development
 
 ```bash
