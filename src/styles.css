@@ -1,14 +1,39 @@
+/* ar.io brand styling (brand-kit/agents.json, 2026-03-30):
+   Primary #5427C8 · Lavender #DFD6F7 · Black #23232D · White #FFFFFF · Card #F0F0F0
+   Headline: Besley 800 · Body: Plus Jakarta Sans. Fonts self-hosted (no external
+   calls). Semantic verdict colors (green/amber/red) are kept as functional
+   signals; everything chrome-level is brand purple. */
+
+@font-face {
+  font-family: "Besley";
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url("./fonts/besley-800.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("./fonts/plus-jakarta-sans.woff2") format("woff2");
+}
+
 :root {
-  --bg: #0f1419;
-  --panel: #1a2129;
-  --border: #2a333d;
-  --text: #e6edf3;
-  --muted: #8b98a5;
-  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-  --ok: #2ea043;
-  --warn: #d29922;
-  --err: #f85149;
-  --none: #6e7681;
+  --primary: #5427c8;
+  --primary-hover: #4420a6;
+  --lavender: #dfd6f7;
+  --text: #23232d;
+  --bg: #ffffff;
+  --surface: #f0f0f0;
+  --border: #e3e0ee;
+  --muted: #6b6b76;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --ok: #1a7f37;
+  --warn: #9a6700;
+  --err: #cf222e;
+  --none: #6b6b76;
 }
 
 * {
@@ -19,7 +44,9 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font: 16px/1.55 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  font-size: 16px;
+  line-height: 1.55;
 }
 
 .app {
@@ -28,9 +55,26 @@ body {
   padding: 2.5rem 1.25rem 4rem;
 }
 
+header {
+  margin-bottom: 1.5rem;
+}
+
+.brand-logo {
+  width: 116px;
+  height: 34px;
+  background-image: url("./brand/ario-full-black.svg");
+  background-repeat: no-repeat;
+  background-position: left center;
+  background-size: contain;
+  margin-bottom: 1.25rem;
+}
+
 h1 {
-  margin: 0 0 0.25rem;
-  font-size: 1.7rem;
+  font-family: "Besley", Georgia, serif;
+  font-weight: 800;
+  margin: 0 0 0.3rem;
+  font-size: 1.9rem;
+  letter-spacing: -0.01em;
 }
 
 .tagline {
@@ -40,24 +84,26 @@ h1 {
 
 .dropzone {
   border: 2px dashed var(--border);
-  border-radius: 12px;
-  padding: 2.5rem 1.5rem;
+  border-radius: 14px;
+  padding: 2.6rem 1.5rem;
   text-align: center;
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
-  background: var(--panel);
+  background: var(--surface);
 }
 
 .dropzone:hover,
 .dropzone:focus,
 .dropzone.dragging {
-  border-color: var(--ok);
+  border-color: var(--primary);
+  background: var(--lavender);
   outline: none;
 }
 
 .dropzone-main {
   margin: 0 0 0.4rem;
   font-size: 1.1rem;
+  font-weight: 600;
 }
 
 .dropzone-sub {
@@ -78,12 +124,17 @@ h1 {
 .gateway-row input {
   flex: 1;
   padding: 0.45rem 0.6rem;
-  background: var(--panel);
+  background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 6px;
   color: var(--text);
   font-family: var(--mono);
   font-size: 0.85rem;
+}
+
+.gateway-row input:focus {
+  outline: none;
+  border-color: var(--primary);
 }
 
 .reverify {
@@ -94,6 +145,7 @@ h1 {
 
 .reverify summary {
   cursor: pointer;
+  color: var(--primary);
 }
 
 .reverify input[type="file"] {
@@ -106,6 +158,11 @@ h1 {
   margin-top: 1.5rem;
 }
 
+.loading {
+  color: var(--muted);
+  padding: 1rem;
+}
+
 .actions {
   display: flex;
   gap: 0.6rem;
@@ -114,31 +171,29 @@ h1 {
 }
 
 .btn {
-  padding: 0.45rem 0.8rem;
-  border-radius: 6px;
-  border: 1px solid var(--ok);
-  background: rgba(46, 160, 67, 0.15);
-  color: var(--text);
+  padding: 0.5rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid var(--primary);
+  background: var(--primary);
+  color: #fff;
+  font-family: inherit;
   font-size: 0.85rem;
+  font-weight: 600;
   cursor: pointer;
 }
 
 .btn:hover {
-  background: rgba(46, 160, 67, 0.28);
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
 }
 
 .btn-secondary {
-  border-color: var(--border);
-  background: var(--panel);
+  background: var(--bg);
+  color: var(--primary);
 }
 
 .btn-secondary:hover {
-  background: #222b35;
-}
-
-.loading {
-  color: var(--muted);
-  padding: 1rem;
+  background: var(--lavender);
 }
 
 .verdict {
@@ -146,10 +201,10 @@ h1 {
   align-items: center;
   gap: 0.6rem;
   padding: 0.9rem 1rem;
-  border-radius: 8px;
+  border-radius: 10px;
   border: 1px solid var(--border);
   font-size: 1.15rem;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .verdict-icon {
@@ -158,19 +213,19 @@ h1 {
 
 .verdict-ok {
   border-color: var(--ok);
-  background: rgba(46, 160, 67, 0.12);
+  background: rgba(26, 127, 55, 0.08);
 }
 .verdict-warn {
   border-color: var(--warn);
-  background: rgba(210, 153, 34, 0.12);
+  background: rgba(154, 103, 0, 0.1);
 }
 .verdict-none {
   border-color: var(--none);
-  background: rgba(110, 118, 129, 0.12);
+  background: var(--surface);
 }
 .verdict-err {
   border-color: var(--err);
-  background: rgba(248, 81, 73, 0.12);
+  background: rgba(207, 34, 46, 0.08);
 }
 
 .kv {
@@ -199,8 +254,8 @@ h1 {
   margin-top: 1rem;
   padding: 1rem;
   border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--panel);
+  border-radius: 10px;
+  background: var(--surface);
 }
 
 .match-head {
@@ -213,7 +268,7 @@ h1 {
 .event-type {
   font-family: var(--mono);
   font-weight: 700;
-  color: var(--ok);
+  color: var(--primary);
 }
 
 .match-role {
@@ -240,7 +295,7 @@ h1 {
 }
 
 .tx-link {
-  color: #58a6ff;
+  color: var(--primary);
 }
 
 .continuity {
@@ -303,9 +358,9 @@ h1 {
 .you-badge {
   font-size: 0.78rem;
   font-weight: 700;
-  color: var(--text);
-  background: rgba(46, 160, 67, 0.18);
-  border: 1px solid var(--ok);
+  color: var(--primary);
+  background: var(--lavender);
+  border: 1px solid var(--primary);
   border-radius: 999px;
   padding: 0.05rem 0.5rem;
 }
@@ -323,10 +378,11 @@ h1 {
 .disclaimer {
   margin-top: 1rem;
   padding: 0.8rem 1rem;
-  border-left: 3px solid var(--muted);
-  background: rgba(139, 152, 165, 0.08);
-  color: var(--muted);
+  border-left: 3px solid var(--primary);
+  background: var(--lavender);
+  color: var(--text);
   font-size: 0.9rem;
+  border-radius: 0 8px 8px 0;
 }
 
 .explain {
