@@ -1,8 +1,13 @@
-/* ar.io brand styling (brand-kit/agents.json, 2026-03-30):
-   Primary #5427C8 · Lavender #DFD6F7 · Black #23232D · White #FFFFFF · Card #F0F0F0
-   Headline: Besley 800 · Body: Plus Jakarta Sans. Fonts self-hosted (no external
-   calls). Semantic verdict colors (green/amber/red) are kept as functional
-   signals; everything chrome-level is brand purple. */
+/* ar.io brand styling — follows brand-kit/agents.json (v2026-03-30) EXACTLY.
+ *
+ * The kit defines only: Primary #5427C8, Lavender #DFD6F7, Black #23232D,
+ * White #FFFFFF, Card Surface #F0F0F0; headline Besley 800, body Plus Jakarta
+ * Sans; dark logo on light bg; lowercase "ar.io". It defines NO neutral/state/
+ * spacing tokens, so those are DERIVED from the palette (neutrals = Black at
+ * reduced alpha; affirmative = Primary; info tint = Lavender). The single
+ * unavoidable non-brand color is one functional alert red for tamper/failed
+ * states (the kit has no danger color). Fonts are self-hosted (no external
+ * request); the logo SVG inlines as a data URI. */
 
 @font-face {
   font-family: "Besley";
@@ -21,19 +26,27 @@
 }
 
 :root {
+  /* brand-kit colors — exact */
   --primary: #5427c8;
-  --primary-hover: #4420a6;
   --lavender: #dfd6f7;
-  --text: #23232d;
-  --bg: #ffffff;
-  --surface: #f0f0f0;
-  --border: #e3e0ee;
-  --muted: #6b6b76;
+  --black: #23232d;
+  --white: #ffffff;
+  --card: #f0f0f0;
+
+  /* derived from the brand palette (kit is silent on these) */
+  --primary-press: #401d97; /* darker Primary for hover/active */
+  --text: var(--black);
+  --muted: rgba(35, 35, 45, 0.6); /* Black @ 60% */
+  --hairline: rgba(35, 35, 45, 0.12); /* Black @ 12% — borders/rules */
+  --lavender-soft: rgba(223, 214, 247, 0.45); /* Lavender tint for fills */
+
+  /* sole functional non-brand color: danger (tamper / failed check) */
+  --alert: #cf222e;
+  --alert-tint: rgba(207, 34, 46, 0.08);
+
   --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  --ok: #1a7f37;
-  --warn: #9a6700;
-  --err: #cf222e;
-  --none: #6b6b76;
+  --sans: "Plus Jakarta Sans", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  --serif: "Besley", Georgia, "Times New Roman", serif;
 }
 
 * {
@@ -42,11 +55,12 @@
 
 body {
   margin: 0;
-  background: var(--bg);
+  background: var(--white);
   color: var(--text);
-  font-family: "Plus Jakarta Sans", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  font-family: var(--sans);
   font-size: 16px;
   line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
 }
 
 .app {
@@ -60,21 +74,23 @@ header {
 }
 
 .brand-logo {
-  width: 116px;
-  height: 34px;
+  width: 112px;
+  height: 33px; /* preserves the wordmark's 1296:381 (≈3.40:1) ratio */
   background-image: url("./brand/ario-full-black.svg");
   background-repeat: no-repeat;
   background-position: left center;
   background-size: contain;
-  margin-bottom: 1.25rem;
+  margin-bottom: 1.4rem;
 }
 
 h1 {
-  font-family: "Besley", Georgia, serif;
+  font-family: var(--serif);
   font-weight: 800;
   margin: 0 0 0.3rem;
-  font-size: 1.9rem;
+  font-size: 1.95rem;
+  line-height: 1.1;
   letter-spacing: -0.01em;
+  color: var(--black);
 }
 
 .tagline {
@@ -83,13 +99,13 @@ h1 {
 }
 
 .dropzone {
-  border: 2px dashed var(--border);
+  border: 2px dashed var(--hairline);
   border-radius: 14px;
   padding: 2.6rem 1.5rem;
   text-align: center;
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
-  background: var(--surface);
+  background: var(--card);
 }
 
 .dropzone:hover,
@@ -124,8 +140,8 @@ h1 {
 .gateway-row input {
   flex: 1;
   padding: 0.45rem 0.6rem;
-  background: var(--bg);
-  border: 1px solid var(--border);
+  background: var(--white);
+  border: 1px solid var(--hairline);
   border-radius: 6px;
   color: var(--text);
   font-family: var(--mono);
@@ -175,7 +191,7 @@ h1 {
   border-radius: 8px;
   border: 1px solid var(--primary);
   background: var(--primary);
-  color: #fff;
+  color: var(--white);
   font-family: inherit;
   font-size: 0.85rem;
   font-weight: 600;
@@ -183,12 +199,12 @@ h1 {
 }
 
 .btn:hover {
-  background: var(--primary-hover);
-  border-color: var(--primary-hover);
+  background: var(--primary-press);
+  border-color: var(--primary-press);
 }
 
 .btn-secondary {
-  background: var(--bg);
+  background: var(--white);
   color: var(--primary);
 }
 
@@ -196,13 +212,15 @@ h1 {
   background: var(--lavender);
 }
 
+/* Verdict banners. Affirmative = Primary on Lavender; danger = alert red;
+   neutral (no-match / lookup error) = muted on Card. */
 .verdict {
   display: flex;
   align-items: center;
   gap: 0.6rem;
   padding: 0.9rem 1rem;
   border-radius: 10px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--hairline);
   font-size: 1.15rem;
   font-weight: 700;
 }
@@ -212,20 +230,24 @@ h1 {
 }
 
 .verdict-ok {
-  border-color: var(--ok);
-  background: rgba(26, 127, 55, 0.08);
+  border-color: var(--primary);
+  background: var(--lavender-soft);
+  color: var(--primary);
 }
 .verdict-warn {
-  border-color: var(--warn);
-  background: rgba(154, 103, 0, 0.1);
+  border-color: var(--alert);
+  background: var(--alert-tint);
+  color: var(--alert);
 }
 .verdict-none {
-  border-color: var(--none);
-  background: var(--surface);
+  border-color: var(--hairline);
+  background: var(--card);
+  color: var(--muted);
 }
 .verdict-err {
-  border-color: var(--err);
-  background: rgba(207, 34, 46, 0.08);
+  border-color: var(--hairline);
+  background: var(--card);
+  color: var(--muted);
 }
 
 .kv {
@@ -253,9 +275,9 @@ h1 {
 .match {
   margin-top: 1rem;
   padding: 1rem;
-  border: 1px solid var(--border);
+  border: 1px solid var(--hairline);
   border-radius: 10px;
-  background: var(--surface);
+  background: var(--card);
 }
 
 .match-head {
@@ -288,10 +310,10 @@ h1 {
 }
 
 .check-ok {
-  color: var(--ok);
+  color: var(--primary);
 }
 .check-fail {
-  color: var(--err);
+  color: var(--alert);
 }
 
 .tx-link {
@@ -301,17 +323,18 @@ h1 {
 .continuity {
   font-size: 0.85rem;
   margin: 0.3rem 0 0.7rem;
+  color: var(--muted);
 }
 
 .continuity.ok {
-  color: var(--ok);
+  color: var(--primary);
 }
 
 .timeline {
   list-style: none;
   margin: 0;
   padding: 0;
-  border-left: 2px solid var(--border);
+  border-left: 2px solid var(--hairline);
 }
 
 .event {
@@ -328,14 +351,14 @@ h1 {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: var(--none);
+  background: var(--muted);
 }
 
 .event-ok::before {
-  background: var(--ok);
+  background: var(--primary);
 }
 .event-warn::before {
-  background: var(--warn);
+  background: var(--alert);
 }
 
 .event-line {
@@ -369,6 +392,7 @@ h1 {
   display: block;
   font-size: 0.78rem;
   margin: 0.15rem 0;
+  color: var(--muted);
 }
 
 .event .tx-link {
@@ -379,7 +403,7 @@ h1 {
   margin-top: 1rem;
   padding: 0.8rem 1rem;
   border-left: 3px solid var(--primary);
-  background: var(--lavender);
+  background: var(--lavender-soft);
   color: var(--text);
   font-size: 0.9rem;
   border-radius: 0 8px 8px 0;
@@ -405,7 +429,7 @@ h1 {
 
 .rejected summary {
   cursor: pointer;
-  color: var(--warn);
+  color: var(--muted);
 }
 
 .rejected-row {
@@ -418,7 +442,7 @@ h1 {
 footer {
   margin-top: 2.5rem;
   padding-top: 1.5rem;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--hairline);
   font-size: 0.85rem;
   color: var(--muted);
 }

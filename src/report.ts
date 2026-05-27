@@ -245,16 +245,29 @@ export function reportToHtml(report: ProofCheckReport): string {
          <ul>${report.rejected.map((r) => `<li class="mono small">${esc(r.tx_id)} — ${esc(r.reason)}</li>`).join("")}</ul>`
       : "";
 
+  // Verdict box tone mirrors the app: affirmative = Primary, danger = alert red,
+  // neutral (no-match / error) = Black. Brand palette per ar.io brand-kit.
+  const tone =
+    report.verdict === "tampered-bytes"
+      ? "#cf222e"
+      : report.verdict === "provenance-found"
+        ? "#5427c8"
+        : "#23232d";
+
   return `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <title>ar.io provenance report — ${esc(report.file_sha256.slice(0, 12))}…</title>
 <style>
-  body { font: 14px/1.5 system-ui, sans-serif; color: #111; max-width: 820px; margin: 2rem auto; padding: 0 1rem; }
-  h1 { font-size: 1.4rem; } h2 { font-size: 1.05rem; margin-top: 1.6rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
-  .verdict { font-size: 1.2rem; font-weight: 700; padding: .6rem .8rem; border: 2px solid #888; border-radius: 6px; }
-  table { border-collapse: collapse; width: 100%; margin: .5rem 0; } th, td { text-align: left; padding: .3rem .5rem; border-bottom: 1px solid #eee; vertical-align: top; }
-  .mono { font-family: ui-monospace, Menlo, Consolas, monospace; } .small { font-size: .8rem; word-break: break-all; } .muted { color: #666; }
-  .kv { margin: .2rem 0; } .kv b { display: inline-block; min-width: 150px; color: #666; font-weight: 400; }
-  .scope li { color: #444; margin: .3rem 0; } footer { margin-top: 2rem; color: #888; font-size: .8rem; border-top: 1px solid #ddd; padding-top: .6rem; }
+  :root { --primary: #5427C8; --black: #23232D; --muted: rgba(35,35,45,.6); --hair: rgba(35,35,45,.14); --lav: #DFD6F7; }
+  body { font-family: "Plus Jakarta Sans", system-ui, sans-serif; font-size: 14px; line-height: 1.5; color: var(--black); max-width: 820px; margin: 2rem auto; padding: 0 1rem; }
+  h1 { font-family: Besley, Georgia, serif; font-weight: 800; font-size: 1.5rem; color: var(--black); }
+  h2 { font-size: 1.05rem; margin-top: 1.6rem; color: var(--primary); border-bottom: 1px solid var(--hair); padding-bottom: .2rem; }
+  h3 { font-size: .98rem; margin: .2rem 0; color: var(--black); }
+  .verdict { font-size: 1.2rem; font-weight: 700; padding: .6rem .8rem; border: 2px solid ${tone}; color: ${tone}; background: ${report.verdict === "provenance-found" ? "var(--lav)" : "transparent"}; border-radius: 8px; }
+  table { border-collapse: collapse; width: 100%; margin: .5rem 0; } th, td { text-align: left; padding: .3rem .5rem; border-bottom: 1px solid var(--hair); vertical-align: top; } th { color: var(--muted); font-weight: 600; }
+  .mono { font-family: ui-monospace, Menlo, Consolas, monospace; } .small { font-size: .8rem; word-break: break-all; } .muted { color: var(--muted); }
+  .kv { margin: .2rem 0; } .kv b { display: inline-block; min-width: 150px; color: var(--muted); font-weight: 400; }
+  a { color: var(--primary); }
+  .scope li { color: var(--black); margin: .3rem 0; } footer { margin-top: 2rem; color: var(--muted); font-size: .8rem; border-top: 1px solid var(--hair); padding-top: .6rem; }
 </style></head><body>
 <h1>ar.io provenance report</h1>
 <p class="verdict">${esc(verdictLabel[report.verdict])}</p>
