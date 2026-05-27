@@ -104,6 +104,15 @@ npm run typecheck  # tsc --noEmit
 npm run build      # static bundle into dist/ (permaweb-deployable)
 ```
 
+### Try it with sample data
+
+[`samples/`](samples/) has ready-made files that exercise each verdict against
+real on-chain data (keep the gateway at the default `turbo-gateway.com`) — a
+verifiable file, a known-good baseline, a tampered version, and an unregistered
+one. They are **manual demo fixtures, not part of `npm test`** (the test suite is
+hermetic); see [`samples/README.md`](samples/README.md) for expected verdicts and
+caveats.
+
 ## License
 
 MIT — see [LICENSE](LICENSE). Making the verifier open is the whole point.
