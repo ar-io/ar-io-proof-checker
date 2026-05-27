@@ -148,3 +148,43 @@ describe("reportToHtml", () => {
     expect(html).toContain("&lt;script&gt;");
   });
 });
+
+describe("verifyReport edge cases", () => {
+  it("a legitimate no-match report re-verifies as OK (B1 regression)", async () => {
+    // No embedded envelopes. Previously results.length===0 forced ok=false,
+    // mislabelling a valid no-match export as FAILED.
+    vi.stubGlobal("fetch", async (input: string | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.endsWith("/graphql")) return Response.json({ data: { transactions: { edges: [] } } });
+      return new Response("nf", { status: 404 });
+    });
+    const report = buildReport(await checkProvenanceForHash("a".repeat(64), GATEWAY));
+    expect(report.verdict).toBe("no-match");
+    expect(Object.keys(report.envelopes)).toHaveLength(0);
+
+    const v = await verifyReport(report);
+    expect(v.recomputedVerdict).toBe("no-match");
+    expect(v.verdictMatches).toBe(true);
+    expect(v.ok).toBe(true);
+  });
+
+  it("a found report with its evidence stripped FAILS (verdict no longer reproduces)", async () => {
+    const report = buildReport(await goodProvenanceReport());
+    report.envelopes = {}; // strip the embedded evidence
+    const v = await verifyReport(report);
+    expect(v.recomputedVerdict).toBe("no-match");
+    expect(v.verdictMatches).toBe(false);
+    expect(v.ok).toBe(false);
+  });
+
+  it("one malformed embedded envelope marks only its row not-authentic, no throw (B6)", async () => {
+    const report = buildReport(await goodProvenanceReport());
+    // Inject a garbage embedded envelope alongside the good one.
+    (report.envelopes as Record<string, unknown>).TX_BAD = null;
+    const v = await verifyReport(report);
+    expect(v.results.find((r) => r.tx_id === "TX_BAD")?.authentic).toBe(false);
+    expect(v.results.find((r) => r.tx_id === "TX1")?.authentic).toBe(true);
+    // overall ok is false (a bad row exists) but the call did not throw.
+    expect(v.ok).toBe(false);
+  });
+});

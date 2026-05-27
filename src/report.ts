@@ -6,7 +6,7 @@
 // can re-run the exact same verification offline. No ar.io service, no operator
 // signature, in the trust path.
 
-import type { Match, ProvenanceReport, Verdict } from "./provenance";
+import { verdictFromRoles, type Match, type ProvenanceReport, type Verdict } from "./provenance";
 import type { ChainContinuity, ContentRole, Envelope } from "./types";
 import { verifyEnvelope } from "./verifier";
 
@@ -123,11 +123,12 @@ export function buildReport(report: ProvenanceReport): ProofCheckReport {
 }
 
 function toReportMatch(m: Match): ReportMatch {
+  const subject = m.envelope.subject as { tenant_id?: unknown; agent_id?: unknown } | undefined;
   return {
     tx_id: m.txId,
     event_type: m.envelope.event_type,
-    tenant_id: m.envelope.subject.tenant_id,
-    agent_id: m.envelope.subject.agent_id,
+    tenant_id: typeof subject?.tenant_id === "string" ? subject.tenant_id : "unknown",
+    agent_id: typeof subject?.agent_id === "string" ? subject.agent_id : "unknown",
     signing_key: m.envelope.public_key,
     role: m.role,
     signed_at: m.envelope.signed_at,
@@ -158,28 +159,38 @@ export interface ReportVerification {
 // envelope is authentic, and (2) the stated verdict is reproduced by re-binding
 // the file hash. Used by the re-import path and by tests.
 export async function verifyReport(report: ProofCheckReport): Promise<ReportVerification> {
+  const envelopes = report.envelopes ?? {};
   const results: ReportVerification["results"] = [];
-  for (const [txId, env] of Object.entries(report.envelopes)) {
-    const v = await verifyEnvelope(env, report.file_sha256);
-    results.push({
-      tx_id: txId,
-      event_type: env.event_type,
-      authentic: v.ok,
-      contentBound: v.contentHashOk === true,
-      role: v.contentRole,
-    });
+  for (const [txId, env] of Object.entries(envelopes)) {
+    // Per-envelope guard (B6): one malformed embedded envelope must mark only
+    // its own row not-authentic, never abort the whole re-verification.
+    let eventType = "unknown";
+    try {
+      eventType = typeof env?.event_type === "string" ? env.event_type : "unknown";
+      const v = await verifyEnvelope(env, report.file_sha256);
+      results.push({
+        tx_id: txId,
+        event_type: eventType,
+        authentic: v.ok,
+        contentBound: v.contentHashOk === true,
+        role: v.contentRole,
+      });
+    } catch {
+      results.push({ tx_id: txId, event_type: eventType, authentic: false, contentBound: false, role: null });
+    }
   }
 
-  const bound = results.filter((r) => r.authentic && r.contentBound);
-  const recomputedVerdict: Verdict =
-    bound.length === 0
-      ? "no-match"
-      : bound.some((r) => r.role === "observed")
-        ? "tampered-bytes"
-        : "provenance-found";
-
-  const allAuthentic = results.length > 0 && results.every((r) => r.authentic);
+  // Recompute the verdict from the roles the bytes re-bound to (shared helper,
+  // B15) and require it to match what the report claims.
+  const boundRoles = results.filter((r) => r.authentic && r.contentBound && r.role).map((r) => r.role as ContentRole);
+  const recomputedVerdict: Verdict = verdictFromRoles(boundRoles);
   const verdictMatches = recomputedVerdict === report.verdict;
+
+  // A report is internally consistent when every embedded envelope is authentic
+  // AND the recomputed verdict matches the stated one. An empty envelope set is
+  // vacuously authentic — so a legitimate no-match report verifies (B1); a
+  // found-report with its evidence stripped fails (recomputed → no-match ≠ stated).
+  const allAuthentic = results.every((r) => r.authentic);
 
   return {
     ok: allAuthentic && verdictMatches,

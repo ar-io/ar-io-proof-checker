@@ -6,7 +6,7 @@
 // the tool proves "this artifact has a verifiable history," never "this is the
 // live production version" or "this is safe." Keep that line crisp.
 
-import type { Match, ProvenanceReport, Verdict } from "./provenance";
+import { MAX_CANDIDATES, type Match, type ProvenanceReport, type Verdict } from "./provenance";
 import {
   buildReport,
   reportToHtml,
@@ -35,6 +35,17 @@ export function renderReport(report: ProvenanceReport): HTMLElement {
   root.appendChild(kv("Your file's SHA-256", report.fileHash, "mono"));
   root.appendChild(kv("Queried gateway", report.gateway));
 
+  if (report.candidatesTruncated) {
+    root.appendChild(
+      el(
+        "p",
+        "muted",
+        `The gateway returned more candidates than were checked; only the first ${MAX_CANDIDATES} were verified. ` +
+          "Narrow the lookup or try another gateway for completeness.",
+      ),
+    );
+  }
+
   // A check ran — let the user export it as evidence (any verdict, including
   // no-match: "we checked and found nothing" is itself a recordable result).
   if (report.verdict !== "error") root.appendChild(renderActions(report));
@@ -58,7 +69,7 @@ export function renderReport(report: ProvenanceReport): HTMLElement {
         // verdict with no detail.
         for (const m of report.matches) root.appendChild(renderBareMatch(m, report.gateway));
       }
-      root.appendChild(disclaimer(report.verdict));
+      root.appendChild(disclaimer(report));
       break;
     case "no-match":
       root.appendChild(noMatchCopy());
@@ -90,8 +101,16 @@ function renderActions(report: ProvenanceReport): HTMLElement {
   printBtn.textContent = "Open printable report";
   printBtn.addEventListener("click", () => {
     const r = buildReport(report);
-    const url = URL.createObjectURL(new Blob([reportToHtml(r)], { type: "text/html" }));
-    window.open(url, "_blank", "noopener");
+    const html = reportToHtml(r);
+    const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
+    const win = window.open(url, "_blank", "noopener");
+    if (win === null) {
+      // Popup blocked — fall back to downloading the HTML so the action never
+      // silently no-ops (B17).
+      URL.revokeObjectURL(url);
+      downloadBlob(`provenance-${report.fileHash.slice(0, 12)}.html`, html, "text/html");
+      return;
+    }
     setTimeout(() => URL.revokeObjectURL(url), 60_000);
   });
 
@@ -227,7 +246,7 @@ function renderBareMatch(m: Match, gateway: string): HTMLElement {
   const p = m.envelope;
   const head = el("div", "match-head");
   head.appendChild(el("span", "event-type", p.event_type));
-  head.appendChild(el("span", "match-role", `tenant ${p.subject.tenant_id} · agent ${p.subject.agent_id}`));
+  head.appendChild(el("span", "match-role", `tenant ${signerTenant(m)} · agent ${signerAgent(m)}`));
   card.appendChild(head);
   card.appendChild(kv("Signing key", p.public_key, "mono"));
   card.appendChild(kv("Signed at", `${p.signed_at} (advisory)`));
@@ -244,12 +263,23 @@ function renderBareMatch(m: Match, gateway: string): HTMLElement {
 
 // --- verdict prose ---------------------------------------------------------
 
-function disclaimer(verdict: Verdict): HTMLElement {
+// The tamper disclaimer is attributed (B4): a tamper record is a CLAIM by whoever
+// signed it, and anyone can anchor a record referencing any hash. Naming the
+// signer(s) — and noting any co-existing known-good registration — stops a
+// stranger's tamper claim from reading as an unqualified verdict about the file.
+function disclaimer(report: ProvenanceReport): HTMLElement {
   const box = el("div", "disclaimer");
-  if (verdict === "tampered-bytes") {
+  if (report.verdict === "tampered-bytes") {
+    const flaggedBy = uniqueSigners(report.matches.filter((m) => m.role === "observed"));
+    const alsoKnownGood = report.matches.some((m) => m.role !== "observed");
     box.textContent =
-      "ⓘ This content was flagged as a tamper of its asset by the agent above. " +
-      "The known-good baseline has a different hash than what you provided.";
+      `⚠ These exact bytes were flagged as a tamper by ${flaggedBy}. That is a claim by ` +
+      "that signer — anyone can anchor a record referencing any hash, so confirm you recognize " +
+      "the signing key (shown above) before trusting it. " +
+      (alsoKnownGood
+        ? "Note: these same bytes also appear as known-good content in another record above. "
+        : "") +
+      "This does not indicate whether this copy is the version running in production.";
   } else {
     box.textContent =
       "ⓘ This confirms the artifact's on-chain history. It does NOT confirm this " +
@@ -257,6 +287,21 @@ function disclaimer(verdict: Verdict): HTMLElement {
       "statement that the file is safe or approved.";
   }
   return box;
+}
+
+function signerTenant(m: Match): string {
+  const s = m.envelope.subject as { tenant_id?: unknown } | undefined;
+  return typeof s?.tenant_id === "string" ? s.tenant_id : "unknown";
+}
+
+function signerAgent(m: Match): string {
+  const s = m.envelope.subject as { agent_id?: unknown } | undefined;
+  return typeof s?.agent_id === "string" ? s.agent_id : "unknown";
+}
+
+function uniqueSigners(matches: Match[]): string {
+  const set = new Set(matches.map((m) => `${signerTenant(m)} / ${signerAgent(m)}`));
+  return [...set].join(", ") || "an agent";
 }
 
 function noMatchCopy(): HTMLElement {

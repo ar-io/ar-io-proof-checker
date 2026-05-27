@@ -127,3 +127,20 @@ describe("content-hash bind (the lying-gateway defense)", () => {
     expect(result.contentHashOk).toBeNull();
   });
 });
+
+describe("verifyEnvelope guards malformed input (B6)", () => {
+  it("returns not-verified (never throws) for null / non-object / array", async () => {
+    for (const bad of [null, undefined, 42, "x", []] as unknown[]) {
+      const result = await verifyEnvelope(bad as never);
+      expect(result.ok).toBe(false);
+      expect(result.signatureOk).toBe(false);
+      expect(result.payloadHashOk).toBe(false);
+      expect(result.errors.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("sets contentHashOk=false (not null) for malformed input when a hash is supplied", async () => {
+    const result = await verifyEnvelope(null as never, "a".repeat(64));
+    expect(result.contentHashOk).toBe(false);
+  });
+});

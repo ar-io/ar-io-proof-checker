@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { assessContinuity, checkProvenanceForHash } from "../src/provenance";
+import { MAX_CANDIDATES, assessContinuity, checkProvenanceForHash } from "../src/provenance";
 import type { AssetEvent, Envelope } from "../src/types";
 
 interface Vector {
@@ -195,5 +195,45 @@ describe("assessContinuity", () => {
     // Two roots, neither GENESIS-anchored cleanly: a is GENESIS, b is GENESIS too.
     const events = [regEvent(a, "GENESIS"), regEvent(b, "GENESIS")];
     expect(assessContinuity(events).continuity).toBe("partial");
+  });
+});
+
+describe("candidate cap + tie-break", () => {
+  it("caps candidates fetched/verified and flags truncation (B5)", async () => {
+    const many: Edge[] = Array.from({ length: MAX_CANDIDATES + 10 }, (_, i) => ({ id: `R${i}` }));
+    const envelopes: Record<string, Envelope> = {};
+    for (const e of many) envelopes[e.id] = registered;
+    stubFetch({ hashEdges: many, assetEdges: [], envelopes });
+
+    const report = await checkProvenanceForHash(REGISTERED_HASH, GATEWAY);
+    expect(report.candidatesTruncated).toBe(true);
+    // Only the first MAX_CANDIDATES are processed (all of which bind here).
+    expect(report.matches.length).toBe(MAX_CANDIDATES);
+  });
+
+  it("does not flag truncation under the cap", async () => {
+    stubFetch({
+      hashEdges: [{ id: "TX_REG" }],
+      assetEdges: [{ id: "TX_REG", block: { height: 1, timestamp: 1 } }],
+      envelopes: { TX_REG: registered },
+    });
+    const report = await checkProvenanceForHash(REGISTERED_HASH, GATEWAY);
+    expect(report.candidatesTruncated).toBe(false);
+  });
+
+  it("tie-breaks same-timestamp timeline events by block height, newest-first (B14)", async () => {
+    stubFetch({
+      hashEdges: [{ id: "TX_REG" }],
+      assetEdges: [
+        { id: "TX_REG", block: { height: 10, timestamp: 1000 } },
+        { id: "TX_TAMP", block: { height: 20, timestamp: 1000 } }, // same ts, higher height
+      ],
+      envelopes: { TX_REG: registered, TX_TAMP: tampered },
+    });
+    const report = await checkProvenanceForHash(REGISTERED_HASH, GATEWAY);
+    expect(report.histories[0].events.map((e) => e.envelope.event_type)).toEqual([
+      "tamper_detected",
+      "asset_registered",
+    ]);
   });
 });

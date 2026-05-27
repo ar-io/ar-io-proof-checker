@@ -12,6 +12,47 @@ import type { Envelope } from "./types";
 
 export const DEFAULT_GATEWAY = "https://turbo-gateway.com";
 
+// Per-request ceiling so a hung/slow gateway can't leave the UI spinning
+// forever — without this a stalled fetch never settles.
+export const FETCH_TIMEOUT_MS = 20_000;
+
+// Validate + normalize a user-entered gateway. Accepts a bare host
+// ("turbo-gateway.com") by assuming https, rejects non-http(s) schemes (so a
+// pasted javascript:/data: URL can't flow into fetch or a link href), and
+// strips trailing slashes. Throws on anything unparseable.
+export function normalizeGateway(input: string): string {
+  const trimmed = input.trim();
+  if (!trimmed) return DEFAULT_GATEWAY;
+  const candidate = /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  let url: URL;
+  try {
+    url = new URL(candidate);
+  } catch {
+    throw new Error(`invalid gateway URL: ${input}`);
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    throw new Error(`gateway must be http(s), got ${url.protocol}`);
+  }
+  return trimSlash(candidate);
+}
+
+async function fetchWithTimeout(
+  url: string,
+  init?: RequestInit,
+  ms: number = FETCH_TIMEOUT_MS,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } catch (e) {
+    if (controller.signal.aborted) throw new Error(`gateway request timed out after ${ms}ms`);
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // The content-hash tags the agent writes (ar-io-agent artifact.md §11). A file's
 // hash can appear as the registered/missing baseline (Asset-Hash), the tampered
 // bytes that were flagged (Observed-Hash), or the known-good bytes a tamper
@@ -43,7 +84,7 @@ interface GraphQLResponse {
 }
 
 async function queryByTag(gateway: string, tagName: string, hash: string): Promise<TxRef[]> {
-  const res = await fetch(`${trimSlash(gateway)}/graphql`, {
+  const res = await fetchWithTimeout(`${trimSlash(gateway)}/graphql`, {
     method: "POST",
     headers: { "content-type": "application/json", accept: "application/json" },
     body: JSON.stringify({ query: GRAPHQL_QUERY, variables: { name: tagName, hash } }),
@@ -60,11 +101,27 @@ async function queryByTag(gateway: string, tagName: string, hash: string): Promi
 // Find candidate envelope transactions whose content-hash tags reference `hash`.
 // Unions across the three hash tags and dedupes by tx id. The tags are unsigned
 // search hints — every returned tx must still be fetched and verified.
+//
+// Resilient by design: a transient failure of ONE of the three tag queries must
+// not sink the whole lookup, so we use allSettled and only error if EVERY query
+// failed (an honest "we couldn't reach the gateway").
 export async function findEnvelopeTxs(gateway: string, hash: string): Promise<TxRef[]> {
-  const lists = await Promise.all(HASH_TAG_NAMES.map((name) => queryByTag(gateway, name, hash)));
+  const settled = await Promise.allSettled(
+    HASH_TAG_NAMES.map((name) => queryByTag(gateway, name, hash)),
+  );
   const byId = new Map<string, TxRef>();
-  for (const list of lists) {
-    for (const tx of list) if (!byId.has(tx.id)) byId.set(tx.id, tx);
+  let anyFulfilled = false;
+  let lastError: unknown;
+  for (const result of settled) {
+    if (result.status === "fulfilled") {
+      anyFulfilled = true;
+      for (const tx of result.value) if (!byId.has(tx.id)) byId.set(tx.id, tx);
+    } else {
+      lastError = result.reason;
+    }
+  }
+  if (!anyFulfilled) {
+    throw lastError instanceof Error ? lastError : new Error("all gateway queries failed");
   }
   return [...byId.values()];
 }
@@ -105,7 +162,7 @@ export async function findAssetEventTxs(
   agentId: string,
   assetId: string,
 ): Promise<AssetEventTxRef[]> {
-  const res = await fetch(`${trimSlash(gateway)}/graphql`, {
+  const res = await fetchWithTimeout(`${trimSlash(gateway)}/graphql`, {
     method: "POST",
     headers: { "content-type": "application/json", accept: "application/json" },
     body: JSON.stringify({
@@ -125,7 +182,7 @@ export async function findAssetEventTxs(
 // Fetch the raw envelope bytes for a tx id and parse as JSON. No trust is placed
 // in the returned bytes here — verifyEnvelope decides whether they're authentic.
 export async function fetchEnvelope(gateway: string, txId: string): Promise<Envelope> {
-  const res = await fetch(`${trimSlash(gateway)}/raw/${encodeURIComponent(txId)}`);
+  const res = await fetchWithTimeout(`${trimSlash(gateway)}/raw/${encodeURIComponent(txId)}`);
   if (!res.ok) throw new Error(`fetch /raw/${txId}: ${res.status} ${res.statusText}`);
   return (await res.json()) as Envelope;
 }

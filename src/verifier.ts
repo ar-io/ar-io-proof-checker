@@ -81,6 +81,21 @@ export async function verifyEnvelope(
 ): Promise<VerificationResult> {
   const errors: string[] = [];
 
+  // Guard a malformed input (null / non-object / array) up front — every field
+  // access below assumes an object. A hostile gateway or a hand-edited report
+  // can supply anything; treat it as "not verified," never a thrown exception.
+  if (env === null || typeof env !== "object" || Array.isArray(env)) {
+    return {
+      ok: false,
+      specVersionOk: false,
+      payloadHashOk: false,
+      signatureOk: false,
+      contentHashOk: expectedContentHash === undefined ? null : false,
+      contentRole: null,
+      errors: ["envelope is not a JSON object"],
+    };
+  }
+
   const specVersionOk = specVersionSupported(env.spec_version);
   if (!specVersionOk) errors.push(`unsupported spec_version: ${JSON.stringify(env.spec_version)}`);
 

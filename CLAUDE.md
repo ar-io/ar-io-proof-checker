@@ -48,7 +48,7 @@ The flow is: **file → hash → discover → fetch → verify → history → r
 | `main.ts` | Wires drop zone / file input / gateway field / report re-import. |
 | `types.ts` | `Envelope`, `VerificationResult`, `AssetEvent`, `AssetHistory`, etc. |
 
-`test/` mirrors this: `conformance.test.ts` (the byte-exact gate over `test-vectors/`), `verifier.test.ts` (negative paths — tampered payload / forged sig / swapped key / bad hex), `provenance.test.ts` (orchestration + continuity, stubbed fetch), `report.test.ts` (schema, caps, round-trip self-verification, HTML-escaping).
+`test/` mirrors this: `conformance.test.ts` (the byte-exact gate over `test-vectors/`), `verifier.test.ts` (negative paths — tampered payload / forged sig / swapped key / bad hex / non-object guard), `crypto.test.ts` (strict hex), `gateway.test.ts` (gateway normalization, fetch timeout, allSettled resilience), `provenance.test.ts` (orchestration, continuity, candidate cap, tie-break — stubbed fetch), `report.test.ts` (schema, caps, round-trip self-verification incl. no-match + malformed-embedded, HTML-escaping), `hash.test.ts` (size advisory). UI-layer tests use **happy-dom** via a `// @vitest-environment happy-dom` directive: `render.dom.test.ts` (verdict attribution, missing-subject guard, truncation note, popup→download fallback) and `main.dom.test.ts` (run-token race guard, input reset, keyboard activation).
 
 ## Test vectors
 

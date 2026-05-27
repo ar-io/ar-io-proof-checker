@@ -26,11 +26,12 @@ export function bytesToHex(bytes: Uint8Array): string {
 
 export function hexToBytes(hex: string): Uint8Array {
   if (hex.length % 2 !== 0) throw new Error("hexToBytes: odd-length string");
+  // Full validation: parseInt() partially parses ("1g" -> 1), which would let
+  // malformed hex through. A strict charset check closes that.
+  if (!/^[0-9a-fA-F]*$/.test(hex)) throw new Error("hexToBytes: non-hex characters");
   const out = new Uint8Array(hex.length / 2);
   for (let i = 0; i < out.length; i++) {
-    const byte = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16);
-    if (Number.isNaN(byte)) throw new Error("hexToBytes: invalid hex");
-    out[i] = byte;
+    out[i] = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16);
   }
   return out;
 }
@@ -54,7 +55,11 @@ export async function ed25519Verify(
   publicKeyHex: string,
 ): Promise<boolean> {
   try {
-    return await ed.verifyAsync(hexToBytes(signatureHex), message, hexToBytes(publicKeyHex));
+    // zip215:false → strict RFC-8032 verification, matching the Go agent's
+    // crypto/ed25519 exactly (noble defaults to the more lenient zip215:true).
+    return await ed.verifyAsync(hexToBytes(signatureHex), message, hexToBytes(publicKeyHex), {
+      zip215: false,
+    });
   } catch {
     return false;
   }
