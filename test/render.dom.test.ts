@@ -43,6 +43,7 @@ function report(over: Partial<ProvenanceReport>): ProvenanceReport {
   return {
     fileHash: "a".repeat(64),
     gateway: "https://gw.example",
+    gatewaysQueried: ["https://gw.example"],
     verdict: "no-match",
     matches: [],
     histories: [],

@@ -81,7 +81,7 @@ describe("checkProvenanceForHash", () => {
       assetEdges: [{ id: "TX_REG", block: { height: 1, timestamp: 1_700_000_000 } }],
       envelopes: { TX_REG: registered },
     });
-    const report = await checkProvenanceForHash(REGISTERED_HASH, GATEWAY);
+    const report = await checkProvenanceForHash(REGISTERED_HASH, [GATEWAY]);
     expect(report.verdict).toBe("provenance-found");
     expect(report.matches).toHaveLength(1);
     expect(report.matches[0].role).toBe("asset");
@@ -103,7 +103,7 @@ describe("checkProvenanceForHash", () => {
       ],
       envelopes: { TX_REG: registered, TX_TAMPER: tampered },
     });
-    const report = await checkProvenanceForHash(REGISTERED_HASH, GATEWAY);
+    const report = await checkProvenanceForHash(REGISTERED_HASH, [GATEWAY]);
     expect(report.verdict).toBe("provenance-found");
     expect(report.histories).toHaveLength(1);
 
@@ -121,28 +121,28 @@ describe("checkProvenanceForHash", () => {
       assetEdges: [{ id: "TX_TAMPER", block: { height: 20, timestamp: 1_700_002_000 } }],
       envelopes: { TX_TAMPER: tampered },
     });
-    const report = await checkProvenanceForHash(OBSERVED_HASH, GATEWAY);
+    const report = await checkProvenanceForHash(OBSERVED_HASH, [GATEWAY]);
     expect(report.verdict).toBe("tampered-bytes");
     expect(report.histories[0].events[0].matchedRole).toBe("observed");
   });
 
   it("returns no-match when nothing references the hash", async () => {
     stubFetch({ hashEdges: [] });
-    const report = await checkProvenanceForHash("a".repeat(64), GATEWAY);
+    const report = await checkProvenanceForHash("a".repeat(64), [GATEWAY]);
     expect(report.verdict).toBe("no-match");
     expect(report.histories).toHaveLength(0);
   });
 
   it("returns error (not no-match) when the gateway lookup fails", async () => {
     stubFetch({ hashEdges: null });
-    const report = await checkProvenanceForHash(REGISTERED_HASH, GATEWAY);
+    const report = await checkProvenanceForHash(REGISTERED_HASH, [GATEWAY]);
     expect(report.verdict).toBe("error");
     expect(report.error).toBeTruthy();
   });
 
   it("rejects a tag-matched candidate whose bytes do not actually bind", async () => {
     stubFetch({ hashEdges: [{ id: "TX_LIE" }], envelopes: { TX_LIE: registered } });
-    const report = await checkProvenanceForHash("b".repeat(64), GATEWAY);
+    const report = await checkProvenanceForHash("b".repeat(64), [GATEWAY]);
     expect(report.verdict).toBe("no-match");
     expect(report.rejected).toHaveLength(1);
     expect(report.rejected[0].txId).toBe("TX_LIE");
@@ -205,7 +205,7 @@ describe("candidate cap + tie-break", () => {
     for (const e of many) envelopes[e.id] = registered;
     stubFetch({ hashEdges: many, assetEdges: [], envelopes });
 
-    const report = await checkProvenanceForHash(REGISTERED_HASH, GATEWAY);
+    const report = await checkProvenanceForHash(REGISTERED_HASH, [GATEWAY]);
     expect(report.candidatesTruncated).toBe(true);
     // Only the first MAX_CANDIDATES are processed (all of which bind here).
     expect(report.matches.length).toBe(MAX_CANDIDATES);
@@ -217,7 +217,7 @@ describe("candidate cap + tie-break", () => {
       assetEdges: [{ id: "TX_REG", block: { height: 1, timestamp: 1 } }],
       envelopes: { TX_REG: registered },
     });
-    const report = await checkProvenanceForHash(REGISTERED_HASH, GATEWAY);
+    const report = await checkProvenanceForHash(REGISTERED_HASH, [GATEWAY]);
     expect(report.candidatesTruncated).toBe(false);
   });
 
@@ -230,7 +230,7 @@ describe("candidate cap + tie-break", () => {
       ],
       envelopes: { TX_REG: registered, TX_TAMP: tampered },
     });
-    const report = await checkProvenanceForHash(REGISTERED_HASH, GATEWAY);
+    const report = await checkProvenanceForHash(REGISTERED_HASH, [GATEWAY]);
     expect(report.histories[0].events.map((e) => e.envelope.event_type)).toEqual([
       "tamper_detected",
       "asset_registered",

@@ -5,24 +5,37 @@
 //   1. GraphQL lookup of candidate transactions by content-hash tag.
 //   2. Raw fetch of an envelope's bytes by tx id.
 //
-// v1 targets the ar.io gateway (turbo-gateway.com — the same default ariod
-// verify uses). Multi-gateway fallback is Phase 4 (proof-checker.md §6, §14 #5).
+// Phase 4: every operation takes an ordered gateway LIST and falls through on
+// failure (network / 5xx / timeout) — and, for discovery, on an empty result
+// too, so "no match" means "none of the configured gateways know these bytes"
+// rather than "the first reachable gateway hadn't indexed them yet". Mirrors
+// the fallback discipline of `ariod verify --gateway a,b,c`. Which gateway
+// served is surfaced so the UI can attribute the result; all gateways remain
+// untrusted — verification re-runs on every envelope regardless of source.
 
 import type { Envelope } from "./types";
 
-export const DEFAULT_GATEWAY = "https://turbo-gateway.com";
+// Defaults per proof-checker.md §14 #5: the ar.io gateway plus arweave.net,
+// user-overridable. Both are interchangeable untrusted delivery surfaces
+// (auditor-recipe.md); a two-entry default means fallback actually exercises
+// in real use. Registry-driven gateway discovery is deliberately NOT here —
+// an automatic list fetch would add an outbound request (invariant #1) and an
+// influence surface over which gateways get queried; revisit at P5 as a
+// user-triggered action.
+export const DEFAULT_GATEWAYS = ["https://turbo-gateway.com", "https://arweave.net"];
 
 // Per-request ceiling so a hung/slow gateway can't leave the UI spinning
-// forever — without this a stalled fetch never settles.
+// forever — without this a stalled fetch never settles. Per attempt, so the
+// worst case grows with the gateway list; lists are short (2–3 entries).
 export const FETCH_TIMEOUT_MS = 20_000;
 
-// Validate + normalize a user-entered gateway. Accepts a bare host
+// Validate + normalize ONE user-entered gateway. Accepts a bare host
 // ("turbo-gateway.com") by assuming https, rejects non-http(s) schemes (so a
 // pasted javascript:/data: URL can't flow into fetch or a link href), and
-// strips trailing slashes. Throws on anything unparseable.
+// strips trailing slashes. Throws on anything unparseable or empty.
 export function normalizeGateway(input: string): string {
   const trimmed = input.trim();
-  if (!trimmed) return DEFAULT_GATEWAY;
+  if (!trimmed) throw new Error("empty gateway URL");
   const candidate = /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
   let url: URL;
   try {
@@ -34,6 +47,20 @@ export function normalizeGateway(input: string): string {
     throw new Error(`gateway must be http(s), got ${url.protocol}`);
   }
   return trimSlash(candidate);
+}
+
+// Parse a comma-separated gateway list into an ordered, deduped array of
+// normalized URLs. Empty/whitespace input falls back to the defaults; any
+// invalid entry throws (a typo should be surfaced, not silently dropped from
+// the fallback order).
+export function normalizeGateways(input: string): string[] {
+  const out: string[] = [];
+  for (const part of input.split(",")) {
+    if (!part.trim()) continue;
+    const gw = normalizeGateway(part);
+    if (!out.includes(gw)) out.push(gw);
+  }
+  return out.length > 0 ? out : [...DEFAULT_GATEWAYS];
 }
 
 async function fetchWithTimeout(
@@ -98,14 +125,14 @@ async function queryByTag(gateway: string, tagName: string, hash: string): Promi
   return edges.map((e) => e.node).filter((n): n is TxRef => !!n?.id);
 }
 
-// Find candidate envelope transactions whose content-hash tags reference `hash`.
-// Unions across the three hash tags and dedupes by tx id. The tags are unsigned
-// search hints — every returned tx must still be fetched and verified.
+// One gateway's view of the candidates for a hash: union of the three tag
+// queries, deduped by tx id. The tags are unsigned search hints — every
+// returned tx must still be fetched and verified.
 //
-// Resilient by design: a transient failure of ONE of the three tag queries must
-// not sink the whole lookup, so we use allSettled and only error if EVERY query
-// failed (an honest "we couldn't reach the gateway").
-export async function findEnvelopeTxs(gateway: string, hash: string): Promise<TxRef[]> {
+// Resilient by design (B12): a transient failure of ONE of the three tag
+// queries must not sink this gateway's lookup, so we use allSettled and only
+// throw if EVERY query failed (an honest "we couldn't reach this gateway").
+async function findEnvelopeTxsOn(gateway: string, hash: string): Promise<TxRef[]> {
   const settled = await Promise.allSettled(
     HASH_TAG_NAMES.map((name) => queryByTag(gateway, name, hash)),
   );
@@ -124,6 +151,35 @@ export async function findEnvelopeTxs(gateway: string, hash: string): Promise<Tx
     throw lastError instanceof Error ? lastError : new Error("all gateway queries failed");
   }
   return [...byId.values()];
+}
+
+// A discovery result attributed to the gateway whose view produced it. When
+// every gateway was reachable but none knew the hash, `gateway` is the first
+// reachable one (the result is equally "from" any of them: nothing).
+export interface Discovery {
+  txs: TxRef[];
+  gateway: string;
+}
+
+// Find candidate envelope transactions whose content-hash tags reference
+// `hash`, trying each gateway in order. Falls through on failure AND on an
+// empty result — first non-empty view wins, and views are kept atomic (no
+// cross-gateway union; verification re-runs per envelope either way, so the
+// trust model is unchanged). Throws only when every gateway was unreachable.
+export async function findEnvelopeTxs(gateways: string[], hash: string): Promise<Discovery> {
+  let firstReachable: string | null = null;
+  let lastError: unknown;
+  for (const gw of gateways) {
+    try {
+      const txs = await findEnvelopeTxsOn(gw, hash);
+      if (txs.length > 0) return { txs, gateway: gw };
+      firstReachable ??= gw;
+    } catch (e) {
+      lastError = e;
+    }
+  }
+  if (firstReachable !== null) return { txs: [], gateway: firstReachable };
+  throw lastError instanceof Error ? lastError : new Error("all gateways failed");
 }
 
 export interface AssetEventTxRef extends TxRef {
@@ -151,12 +207,7 @@ interface AssetEventsResponse {
   errors?: { message?: string }[];
 }
 
-// Every event anchored for a given asset under one (tenant, agent): the
-// asset_registered chain plus the tamper_detected / asset_missing chain (all
-// carry the Asset-Id tag). verification_checkpoint events are per-agent and
-// carry no Asset-Id, so routine "verified" runs — which live as Merkle leaves
-// inside checkpoints — are not returned here by design.
-export async function findAssetEventTxs(
+async function findAssetEventTxsOn(
   gateway: string,
   tenantId: string,
   agentId: string,
@@ -179,12 +230,52 @@ export async function findAssetEventTxs(
   return edges.map((e) => e.node).filter((n): n is AssetEventTxRef => !!n?.id);
 }
 
-// Fetch the raw envelope bytes for a tx id and parse as JSON. No trust is placed
-// in the returned bytes here — verifyEnvelope decides whether they're authentic.
-export async function fetchEnvelope(gateway: string, txId: string): Promise<Envelope> {
-  const res = await fetchWithTimeout(`${trimSlash(gateway)}/raw/${encodeURIComponent(txId)}`);
-  if (!res.ok) throw new Error(`fetch /raw/${txId}: ${res.status} ${res.statusText}`);
-  return (await res.json()) as Envelope;
+// Every event anchored for a given asset under one (tenant, agent): the
+// asset_registered chain plus the tamper_detected / asset_missing chain (all
+// carry the Asset-Id tag). verification_checkpoint events are per-agent and
+// carry no Asset-Id, so routine "verified" runs — which live as Merkle leaves
+// inside checkpoints — are not returned here by design.
+//
+// Same fallback semantics as findEnvelopeTxs: failure or an empty result falls
+// through to the next gateway; first non-empty view wins.
+export async function findAssetEventTxs(
+  gateways: string[],
+  tenantId: string,
+  agentId: string,
+  assetId: string,
+): Promise<AssetEventTxRef[]> {
+  let anyReachable = false;
+  let lastError: unknown;
+  for (const gw of gateways) {
+    try {
+      const refs = await findAssetEventTxsOn(gw, tenantId, agentId, assetId);
+      if (refs.length > 0) return refs;
+      anyReachable = true;
+    } catch (e) {
+      lastError = e;
+    }
+  }
+  if (anyReachable) return [];
+  throw lastError instanceof Error ? lastError : new Error("all gateways failed");
+}
+
+// Fetch the raw envelope bytes for a tx id, trying each gateway in order. Any
+// per-gateway failure falls through: a 404 means "not propagated to that
+// gateway yet — or doesn't exist there" (exactly the case multi-gateway helps
+// with), and 5xx/network/timeout are ordinary transient failures. No trust is
+// placed in the returned bytes here — verifyEnvelope decides authenticity.
+export async function fetchEnvelope(gateways: string[], txId: string): Promise<Envelope> {
+  let lastError: unknown;
+  for (const gw of gateways) {
+    try {
+      const res = await fetchWithTimeout(`${trimSlash(gw)}/raw/${encodeURIComponent(txId)}`);
+      if (!res.ok) throw new Error(`fetch /raw/${txId}: ${res.status} ${res.statusText}`);
+      return (await res.json()) as Envelope;
+    } catch (e) {
+      lastError = e;
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error(`fetch /raw/${txId}: all gateways failed`);
 }
 
 function trimSlash(url: string): string {

@@ -31,6 +31,7 @@ function noMatch(fileHash: string): ProvenanceReport {
   return {
     fileHash,
     gateway: "https://gw.example",
+    gatewaysQueried: ["https://gw.example"],
     verdict: "no-match",
     matches: [],
     histories: [],

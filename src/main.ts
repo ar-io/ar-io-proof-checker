@@ -3,7 +3,7 @@
 // network call is made until the user supplies a file.
 
 import { checkProvenance } from "./provenance";
-import { DEFAULT_GATEWAY, normalizeGateway } from "./gateway";
+import { DEFAULT_GATEWAYS, normalizeGateways } from "./gateway";
 import { fileSizeAdvisory } from "./hash";
 import { renderReport, renderReimport } from "./render";
 import { REPORT_SPEC, verifyReport, type ProofCheckReport } from "./report";
@@ -15,8 +15,8 @@ const gatewayInput = byId<HTMLInputElement>("gateway");
 const reportInput = byId<HTMLInputElement>("report-input");
 const results = byId("results");
 
-gatewayInput.value = DEFAULT_GATEWAY;
-gatewayInput.placeholder = DEFAULT_GATEWAY;
+gatewayInput.value = DEFAULT_GATEWAYS.join(", ");
+gatewayInput.placeholder = DEFAULT_GATEWAYS.join(", ");
 
 // Monotonic token so a slower earlier request can't overwrite a newer result
 // (B2). Each run captures the token at start; on completion it only renders if
@@ -75,11 +75,12 @@ async function runReport(file: File): Promise<void> {
 async function run(file: File): Promise<void> {
   const token = ++activeRun;
 
-  // Gateway must be a valid http(s) URL (B10).
-  let gateway: string;
+  // Each gateway must be a valid http(s) URL (B10); comma-separated list,
+  // tried in order with fallback.
+  let gateways: string[];
   try {
-    gateway = normalizeGateway(gatewayInput.value);
-    gatewayInput.value = gateway;
+    gateways = normalizeGateways(gatewayInput.value);
+    gatewayInput.value = gateways.join(", ");
   } catch (e) {
     show(explain(`Invalid gateway: ${msg(e)}`));
     return;
@@ -94,7 +95,7 @@ async function run(file: File): Promise<void> {
 
   show(loading(file.name, advisory.level === "warn" ? advisory.message : undefined));
   try {
-    const report = await checkProvenance(file, gateway);
+    const report = await checkProvenance(file, gateways);
     if (token === activeRun) show(renderReport(report));
   } catch (e) {
     // checkProvenance handles its own errors into a report; this only fires on

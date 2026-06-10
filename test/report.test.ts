@@ -58,7 +58,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 async function goodProvenanceReport() {
   stubGoodFetch();
-  return checkProvenanceForHash(REGISTERED_HASH, GATEWAY);
+  return checkProvenanceForHash(REGISTERED_HASH, [GATEWAY]);
 }
 
 describe("buildReport", () => {
@@ -133,7 +133,7 @@ describe("reportToHtml", () => {
     // (signature won't match, but reportToHtml is pure presentation — we only
     // assert escaping here, not verification.)
     stubGoodFetch(evil);
-    const report = buildReport(await checkProvenanceForHash(REGISTERED_HASH, GATEWAY));
+    const report = buildReport(await checkProvenanceForHash(REGISTERED_HASH, [GATEWAY]));
     // Force the hostile string into the rendered surface even if it was rejected:
     report.histories.push({
       tenant_id: "t",
@@ -158,7 +158,7 @@ describe("verifyReport edge cases", () => {
       if (url.endsWith("/graphql")) return Response.json({ data: { transactions: { edges: [] } } });
       return new Response("nf", { status: 404 });
     });
-    const report = buildReport(await checkProvenanceForHash("a".repeat(64), GATEWAY));
+    const report = buildReport(await checkProvenanceForHash("a".repeat(64), [GATEWAY]));
     expect(report.verdict).toBe("no-match");
     expect(Object.keys(report.envelopes)).toHaveLength(0);
 
