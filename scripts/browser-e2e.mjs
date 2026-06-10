@@ -13,7 +13,7 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/, "");
 const EXE = process.env.CHROME_BIN ?? "/usr/bin/chromium-browser";
-const URL = "http://localhost:4173/";
+const APP_URL = "http://localhost:4173/";
 
 const browser = await chromium.launch({ executablePath: EXE });
 const page = await browser.newPage({ viewport: { width: 1100, height: 900 } });
@@ -24,7 +24,7 @@ const check = (name, cond, detail = "") => {
 };
 page.on("pageerror", (e) => check("no page JS errors", false, String(e)));
 
-await page.goto(URL, { waitUntil: "load" });
+await page.goto(APP_URL, { waitUntil: "load" });
 
 // 1. Default gateway chain prefilled (localhost → static anchors only).
 const gwValue = await page.inputValue("#gateway");
