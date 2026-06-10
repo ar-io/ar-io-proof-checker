@@ -31,15 +31,47 @@ function goodEnvelope(): Envelope {
   };
 }
 
-describe("specVersionSupported", () => {
+describe("specVersionSupported (fail-closed registry)", () => {
   it("accepts the current major", () => {
     expect(specVersionSupported("ario.agent/v1")).toBe(true);
+  });
+  it("accepts additive minors within an accepted major (Go reference semantics)", () => {
+    expect(specVersionSupported("ario.agent/v1.1")).toBe(true);
+    expect(specVersionSupported("ario.agent/v1.27")).toBe(true);
   });
   it("rejects unknown majors and garbage", () => {
     expect(specVersionSupported("ario.agent/v2")).toBe(false);
     expect(specVersionSupported("ario.agent/v0")).toBe(false);
+    expect(specVersionSupported("ario.agent/v12")).toBe(false); // not a v1 minor
     expect(specVersionSupported("evil")).toBe(false);
     expect(specVersionSupported("")).toBe(false);
+  });
+  it("rejects other profiles until they are deliberate registry additions", () => {
+    expect(specVersionSupported("ario.mlflow/v1")).toBe(false);
+  });
+});
+
+// The signed scope is JCS(envelope minus signature minus co_signatures)
+// (envelope-spec §2, §7.1). The corpus has no co-signed vectors, so this is
+// the explicit pin: adding co_signatures to a signed envelope must NOT
+// invalidate the primary signature — and (control) adding any other field must.
+describe("co_signatures is outside the signed scope", () => {
+  it("a co-signed envelope still verifies (strip excludes co_signatures)", async () => {
+    const env = goodEnvelope();
+    env.co_signatures = [
+      { public_key: "ab".repeat(32), signature: "cd".repeat(64), role: "approver" },
+    ];
+    const result = await verifyEnvelope(env);
+    expect(result.signatureOk).toBe(true);
+    expect(result.ok).toBe(true);
+  });
+
+  it("control: any other added field DOES break the signature", async () => {
+    const env = goodEnvelope() as Envelope & { extra_field?: string };
+    env.extra_field = "x";
+    const result = await verifyEnvelope(env);
+    expect(result.signatureOk).toBe(false);
+    expect(result.ok).toBe(false);
   });
 });
 

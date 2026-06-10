@@ -12,9 +12,14 @@ import canonicalize from "canonicalize";
 import { ed25519Verify, sha256Hex, utf8 } from "./crypto";
 import type { ContentRole, Envelope, VerificationResult } from "./types";
 
-// Supported spec_version majors. Verifiers MUST reject unknown majors
-// (artifact.md §3). A minor bump (new event type) stays within major 1.
-const SUPPORTED_SPEC_MAJORS = new Set([1]);
+// Fail-closed accepted-profile registry (envelope-spec §2, artifact.md §13):
+// exactly the accepted profile majors, nothing else. Minors within an accepted
+// major ("ario.agent/v1.<minor>") are additive and tolerated — matching the Go
+// reference kernel's semantics (pkg/proof isSupportedSpec) so the JS and
+// WASM-Go verifiers agree. Accepting a new profile (e.g. ario.mlflow/v1) is a
+// deliberate one-entry addition HERE and only here — mlflow-dialect behaviors
+// (like its underscore-key strip) must never leak into the agent profile.
+const ACCEPTED_SPEC_MAJORS = ["ario.agent/v1"];
 
 // RFC 8785 (JCS) canonicalization. The `canonicalize` package is the reference
 // JS implementation; correctness is pinned by the conformance vectors.
@@ -27,9 +32,8 @@ export function jcs(value: unknown): string {
 }
 
 export function specVersionSupported(specVersion: string): boolean {
-  const match = /^ario\.agent\/v(\d+)$/.exec(specVersion ?? "");
-  if (!match) return false;
-  return SUPPORTED_SPEC_MAJORS.has(Number(match[1]));
+  if (typeof specVersion !== "string" || specVersion === "") return false;
+  return ACCEPTED_SPEC_MAJORS.some((m) => specVersion === m || specVersion.startsWith(`${m}.`));
 }
 
 // The content hash(es) an envelope commits to, by event type — the values a
@@ -111,10 +115,15 @@ export async function verifyEnvelope(
     errors.push(`payload canonicalization failed: ${stringifyErr(e)}`);
   }
 
-  // Check 2 — Signature Confirmed: Ed25519 over JCS(envelope minus signature).
+  // Check 2 — Signature Confirmed: Ed25519 over the signed scope, which is
+  // JCS(envelope minus `signature` minus `co_signatures`) per envelope-spec §2.
+  // The co_signatures carve-out (§7.1) lets a countersignature be added without
+  // invalidating the primary signature; the field is reserved/default-absent.
+  // The corpus has no co-signed vectors, so this strip is pinned by an explicit
+  // unit test rather than by conformance.
   let signatureOk = false;
   try {
-    const { signature: _signature, ...envelopeForSig } = env;
+    const { signature: _signature, co_signatures: _coSignatures, ...envelopeForSig } = env;
     signatureOk = await ed25519Verify(env.signature, utf8(jcs(envelopeForSig)), env.public_key);
     if (!signatureOk) errors.push("Ed25519 signature verification failed");
   } catch (e) {
