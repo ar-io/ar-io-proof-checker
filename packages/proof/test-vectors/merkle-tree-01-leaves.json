@@ -1,0 +1,31 @@
+{
+  "description": "Single-leaf RFC 9162 tree",
+  "expected_root_hex": "b86038b6576c5919e9221af09166ffb873a648e2a88cffaf54d4eb0d69097e72",
+  "inclusion_proofs": [
+    {
+      "audit_path_hex": [],
+      "leaf_index": 0
+    }
+  ],
+  "leaf_count": 1,
+  "leaves": [
+    {
+      "leaf_hash_hex": "b86038b6576c5919e9221af09166ffb873a648e2a88cffaf54d4eb0d69097e72",
+      "leaf_object": {
+        "agent_id": "prod-ml-host-01",
+        "asset": {
+          "asset_id": "asset-000",
+          "type": "filesystem",
+          "uri": "file:///data/asset-000.bin"
+        },
+        "expected_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "observed_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "outcome": "verified",
+        "policy_hash": "2a8e3f9d4c5b6a7e8f1d2c3b4a5e6f7d8c9b0a1e2f3d4c5b6a7e8f9d0c1b2a3e",
+        "schema": "ario.agent.leaf/v1",
+        "verified_at": "2026-05-12T00:00:00.000Z"
+      }
+    }
+  ],
+  "vector_id": "merkle-tree-01-leaves"
+}

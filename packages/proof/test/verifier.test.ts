@@ -18,7 +18,7 @@ interface Vector {
 }
 
 const registeredPath = fileURLToPath(
-  new URL("../../../test-vectors/envelope-asset-registered-01.json", import.meta.url),
+  new URL("../test-vectors/envelope-asset-registered-01.json", import.meta.url),
 );
 
 function goodEnvelope(): Envelope {

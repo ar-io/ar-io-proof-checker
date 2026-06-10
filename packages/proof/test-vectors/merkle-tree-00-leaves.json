@@ -1,0 +1,8 @@
+{
+  "description": "Empty RFC 9162 tree \u2014 root is SHA-256(\"\") per spec",
+  "expected_root_hex": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "inclusion_proofs": [],
+  "leaf_count": 0,
+  "leaves": [],
+  "vector_id": "merkle-tree-00-leaves"
+}

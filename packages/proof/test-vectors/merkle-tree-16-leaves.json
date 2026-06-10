@@ -1,0 +1,309 @@
+{
+  "description": "Sixteen-leaf RFC 9162 tree (power-of-two)",
+  "expected_root_hex": "fc0c64684398378ab96a12ef6e5bc49891eb1299b0bae6648ae9095d4d301834",
+  "inclusion_proofs": [
+    {
+      "audit_path_hex": [
+        "f777c4b0b20745b63f47f6e619506437153fc42579d7bf6ce08738b72e055a08",
+        "b19a41ea23f40ac1532e07aff7ca7e93e0d25f680a889a80f9115ab85537fe4c",
+        "e6733354cd5ffabda81d4eb466cee3ae7835f027f8685e5f4d1a20074a86c23e",
+        "b5881608d4f7a6e525787afcb43164402eed4ce4e01618d16665ff17299ebb48"
+      ],
+      "leaf_index": 0
+    },
+    {
+      "audit_path_hex": [
+        "9584553c217934f2906ded8a2c1119617c13aa518e77fe6d2f68b635c6d977a3",
+        "cf3b7f7c18a4423d1bff03597c192442db33a046c077cef4f7b9232d791464af",
+        "b4958ca9ea412a23d93e4197e3efd6122c783da776748a74f95e90c0a457dc4b",
+        "df76191322e22e98a3ad3fa1944ea3670dd550055feaa8a92aa4134f1512ca6d"
+      ],
+      "leaf_index": 8
+    },
+    {
+      "audit_path_hex": [
+        "27236b2b809dffa244a43e5438b9b23246efeed18fca393557bfd0cabd46bb77",
+        "92f9c336ae3605e08ea9770b926d491f90d14983f279a66f4e554068761c857b",
+        "fa1c1950f1ee2e0f42e6d4b2127380471ecb62513cb1bad59ccc9c5a7c0cc99d",
+        "df76191322e22e98a3ad3fa1944ea3670dd550055feaa8a92aa4134f1512ca6d"
+      ],
+      "leaf_index": 15
+    }
+  ],
+  "leaf_count": 16,
+  "leaves": [
+    {
+      "leaf_hash_hex": "b86038b6576c5919e9221af09166ffb873a648e2a88cffaf54d4eb0d69097e72",
+      "leaf_object": {
+        "agent_id": "prod-ml-host-01",
+        "asset": {
+          "asset_id": "asset-000",
+          "type": "filesystem",
+          "uri": "file:///data/asset-000.bin"
+        },
+        "expected_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "observed_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "outcome": "verified",
+        "policy_hash": "2a8e3f9d4c5b6a7e8f1d2c3b4a5e6f7d8c9b0a1e2f3d4c5b6a7e8f9d0c1b2a3e",
+        "schema": "ario.agent.leaf/v1",
+        "verified_at": "2026-05-12T00:00:00.000Z"
+      }
+    },
+    {
+      "leaf_hash_hex": "f777c4b0b20745b63f47f6e619506437153fc42579d7bf6ce08738b72e055a08",
+      "leaf_object": {
+        "agent_id": "prod-ml-host-01",
+        "asset": {
+          "asset_id": "asset-001",
+          "type": "filesystem",
+          "uri": "file:///data/asset-001.bin"
+        },
+        "expected_hash": "0000000000000000000000000000000000000000000000000000000000000001",
+        "observed_hash": "0000000000000000000000000000000000000000000000000000000000000001",
+        "outcome": "verified",
+        "policy_hash": "2a8e3f9d4c5b6a7e8f1d2c3b4a5e6f7d8c9b0a1e2f3d4c5b6a7e8f9d0c1b2a3e",
+        "schema": "ario.agent.leaf/v1",
+        "verified_at": "2026-05-12T01:00:00.000Z"
+      }
+    },
+    {
+      "leaf_hash_hex": "9c31b022cca36279982f9797f25f348f0cac43e674bdda578179e0f4ff152b77",
+      "leaf_object": {
+        "agent_id": "prod-ml-host-01",
+        "asset": {
+          "asset_id": "asset-002",
+          "type": "filesystem",
+          "uri": "file:///data/asset-002.bin"
+        },
+        "expected_hash": "0000000000000000000000000000000000000000000000000000000000000002",
+        "observed_hash": "0000000000000000000000000000000000000000000000000000000000000002",
+        "outcome": "verified",
+        "policy_hash": "2a8e3f9d4c5b6a7e8f1d2c3b4a5e6f7d8c9b0a1e2f3d4c5b6a7e8f9d0c1b2a3e",
+        "schema": "ario.agent.leaf/v1",
+        "verified_at": "2026-05-12T02:00:00.000Z"
+      }
+    },
+    {
+      "leaf_hash_hex": "b8404e9be40ff993a12f2bef97b41de35d25cc843c0bd13a73d2ecc942505851",
+      "leaf_object": {
+        "agent_id": "prod-ml-host-01",
+        "asset": {
+          "asset_id": "asset-003",
+          "type": "filesystem",
+          "uri": "file:///data/asset-003.bin"
+        },
+        "expected_hash": "0000000000000000000000000000000000000000000000000000000000000003",
+        "observed_hash": "0000000000000000000000000000000000000000000000000000000000000003",
+        "outcome": "verified",
+        "policy_hash": "2a8e3f9d4c5b6a7e8f1d2c3b4a5e6f7d8c9b0a1e2f3d4c5b6a7e8f9d0c1b2a3e",
+        "schema": "ario.agent.leaf/v1",
+        "verified_at": "2026-05-12T03:00:00.000Z"
+      }
+    },
+    {
+      "leaf_hash_hex": "2f70289c8193d41935f87e9cfb0274fe415e2437320b9f734c372e29c1d0d846",
+      "leaf_object": {
+        "agent_id": "prod-ml-host-01",
+        "asset": {
+          "asset_id": "asset-004",
+          "type": "filesystem",
+          "uri": "file:///data/asset-004.bin"
+        },
+        "expected_hash": "0000000000000000000000000000000000000000000000000000000000000004",
+        "observed_hash": "0000000000000000000000000000000000000000000000000000000000000004",
+        "outcome": "verified",
+        "policy_hash": "2a8e3f9d4c5b6a7e8f1d2c3b4a5e6f7d8c9b0a1e2f3d4c5b6a7e8f9d0c1b2a3e",
+        "schema": "ario.agent.leaf/v1",
+        "verified_at": "2026-05-12T04:00:00.000Z"
+      }
+    },
+    {
+      "leaf_hash_hex": "5f5b3cc580f21357126620d0c94f5e522634f269bb2b7e0d1d58b6fb37e6edf8",
+      "leaf_object": {
+        "agent_id": "prod-ml-host-01",
+        "asset": {
+          "asset_id": "asset-005",
+          "type": "filesystem",
+          "uri": "file:///data/asset-005.bin"
+        },
+        "expected_hash": "0000000000000000000000000000000000000000000000000000000000000005",
+        "observed_hash": "0000000000000000000000000000000000000000000000000000000000000005",
+        "outcome": "verified",
+        "policy_hash": "2a8e3f9d4c5b6a7e8f1d2c3b4a5e6f7d8c9b0a1e2f3d4c5b6a7e8f9d0c1b2a3e",
+        "schema": "ario.agent.leaf/v1",
+        "verified_at": "2026-05-12T05:00:00.000Z"
+      }
+    },
+    {
+      "leaf_hash_hex": "fea0e67276d261437099b9a8edab5d5e1c9a0631b139b8bdcb7f185c390af8c5",
+      "leaf_object": {
+        "agent_id": "prod-ml-host-01",
+        "asset": {
+          "asset_id": "asset-006",
+          "type": "filesystem",
+          "uri": "file:///data/asset-006.bin"
+        },
+        "expected_hash": "0000000000000000000000000000000000000000000000000000000000000006",
+        "observed_hash": "0000000000000000000000000000000000000000000000000000000000000006",
+        "outcome": "verified",
+        "policy_hash": "2a8e3f9d4c5b6a7e8f1d2c3b4a5e6f7d8c9b0a1e2f3d4c5b6a7e8f9d0c1b2a3e",
+        "schema": "ario.agent.leaf/v1",
+        "verified_at": "2026-05-12T06:00:00.000Z"
+      }
+    },
+    {
+      "leaf_hash_hex": "80dd4b61f7448ad34ddd06c8cf88cb2465b1efa1605ad81a103e462b0ee88446",
+      "leaf_object": {
+        "agent_id": "prod-ml-host-01",
+        "asset": {
+          "asset_id": "asset-007",
+          "type": "filesystem",
+          "uri": "file:///data/asset-007.bin"
+        },
+        "expected_hash": "0000000000000000000000000000000000000000000000000000000000000007",
+        "observed_hash": "0000000000000000000000000000000000000000000000000000000000000007",
+        "outcome": "verified",
+        "policy_hash": "2a8e3f9d4c5b6a7e8f1d2c3b4a5e6f7d8c9b0a1e2f3d4c5b6a7e8f9d0c1b2a3e",
+        "schema": "ario.agent.leaf/v1",
+        "verified_at": "2026-05-12T07:00:00.000Z"
+      }
+    },
+    {
+      "leaf_hash_hex": "975cf096e022f308ae7db80615e4cd5a53276354b3851b0afe84a91cc2a118ff",
+      "leaf_object": {
+        "agent_id": "prod-ml-host-01",
+        "asset": {
+          "asset_id": "asset-008",
+          "type": "filesystem",
+          "uri": "file:///data/asset-008.bin"
+        },
+        "expected_hash": "0000000000000000000000000000000000000000000000000000000000000008",
+        "observed_hash": "0000000000000000000000000000000000000000000000000000000000000008",
+        "outcome": "verified",
+        "policy_hash": "2a8e3f9d4c5b6a7e8f1d2c3b4a5e6f7d8c9b0a1e2f3d4c5b6a7e8f9d0c1b2a3e",
+        "schema": "ario.agent.leaf/v1",
+        "verified_at": "2026-05-12T08:00:00.000Z"
+      }
+    },
+    {
+      "leaf_hash_hex": "9584553c217934f2906ded8a2c1119617c13aa518e77fe6d2f68b635c6d977a3",
+      "leaf_object": {
+        "agent_id": "prod-ml-host-01",
+        "asset": {
+          "asset_id": "asset-009",
+          "type": "filesystem",
+          "uri": "file:///data/asset-009.bin"
+        },
+        "expected_hash": "0000000000000000000000000000000000000000000000000000000000000009",
+        "observed_hash": "0000000000000000000000000000000000000000000000000000000000000009",
+        "outcome": "verified",
+        "policy_hash": "2a8e3f9d4c5b6a7e8f1d2c3b4a5e6f7d8c9b0a1e2f3d4c5b6a7e8f9d0c1b2a3e",
+        "schema": "ario.agent.leaf/v1",
+        "verified_at": "2026-05-12T09:00:00.000Z"
+      }
+    },
+    {
+      "leaf_hash_hex": "116a73772a269b13b55f20b2dc0f60903ebc9fa24c0ee71c8d8d5205cb74a2ad",
+      "leaf_object": {
+        "agent_id": "prod-ml-host-01",
+        "asset": {
+          "asset_id": "asset-010",
+          "type": "filesystem",
+          "uri": "file:///data/asset-010.bin"
+        },
+        "expected_hash": "000000000000000000000000000000000000000000000000000000000000000a",
+        "observed_hash": "000000000000000000000000000000000000000000000000000000000000000a",
+        "outcome": "verified",
+        "policy_hash": "2a8e3f9d4c5b6a7e8f1d2c3b4a5e6f7d8c9b0a1e2f3d4c5b6a7e8f9d0c1b2a3e",
+        "schema": "ario.agent.leaf/v1",
+        "verified_at": "2026-05-12T00:00:00.000Z"
+      }
+    },
+    {
+      "leaf_hash_hex": "83249462841babd228a9ec995dd3c7b390971cb53d65a87397978e87807a0b84",
+      "leaf_object": {
+        "agent_id": "prod-ml-host-01",
+        "asset": {
+          "asset_id": "asset-011",
+          "type": "filesystem",
+          "uri": "file:///data/asset-011.bin"
+        },
+        "expected_hash": "000000000000000000000000000000000000000000000000000000000000000b",
+        "observed_hash": "000000000000000000000000000000000000000000000000000000000000000b",
+        "outcome": "verified",
+        "policy_hash": "2a8e3f9d4c5b6a7e8f1d2c3b4a5e6f7d8c9b0a1e2f3d4c5b6a7e8f9d0c1b2a3e",
+        "schema": "ario.agent.leaf/v1",
+        "verified_at": "2026-05-12T01:00:00.000Z"
+      }
+    },
+    {
+      "leaf_hash_hex": "d2419a3adb590cee51149acdd43debbb7c0c7d2edc8ebee9307dc1fccaba5f61",
+      "leaf_object": {
+        "agent_id": "prod-ml-host-01",
+        "asset": {
+          "asset_id": "asset-012",
+          "type": "filesystem",
+          "uri": "file:///data/asset-012.bin"
+        },
+        "expected_hash": "000000000000000000000000000000000000000000000000000000000000000c",
+        "observed_hash": "000000000000000000000000000000000000000000000000000000000000000c",
+        "outcome": "verified",
+        "policy_hash": "2a8e3f9d4c5b6a7e8f1d2c3b4a5e6f7d8c9b0a1e2f3d4c5b6a7e8f9d0c1b2a3e",
+        "schema": "ario.agent.leaf/v1",
+        "verified_at": "2026-05-12T02:00:00.000Z"
+      }
+    },
+    {
+      "leaf_hash_hex": "cb0433d0e819c072709519a19d265f610b70c29ce7edd9223b9e6cb1afcd03bf",
+      "leaf_object": {
+        "agent_id": "prod-ml-host-01",
+        "asset": {
+          "asset_id": "asset-013",
+          "type": "filesystem",
+          "uri": "file:///data/asset-013.bin"
+        },
+        "expected_hash": "000000000000000000000000000000000000000000000000000000000000000d",
+        "observed_hash": "000000000000000000000000000000000000000000000000000000000000000d",
+        "outcome": "verified",
+        "policy_hash": "2a8e3f9d4c5b6a7e8f1d2c3b4a5e6f7d8c9b0a1e2f3d4c5b6a7e8f9d0c1b2a3e",
+        "schema": "ario.agent.leaf/v1",
+        "verified_at": "2026-05-12T03:00:00.000Z"
+      }
+    },
+    {
+      "leaf_hash_hex": "27236b2b809dffa244a43e5438b9b23246efeed18fca393557bfd0cabd46bb77",
+      "leaf_object": {
+        "agent_id": "prod-ml-host-01",
+        "asset": {
+          "asset_id": "asset-014",
+          "type": "filesystem",
+          "uri": "file:///data/asset-014.bin"
+        },
+        "expected_hash": "000000000000000000000000000000000000000000000000000000000000000e",
+        "observed_hash": "000000000000000000000000000000000000000000000000000000000000000e",
+        "outcome": "verified",
+        "policy_hash": "2a8e3f9d4c5b6a7e8f1d2c3b4a5e6f7d8c9b0a1e2f3d4c5b6a7e8f9d0c1b2a3e",
+        "schema": "ario.agent.leaf/v1",
+        "verified_at": "2026-05-12T04:00:00.000Z"
+      }
+    },
+    {
+      "leaf_hash_hex": "dca3064da729644de742fc5eaab734cec286b87c9b48054f38782ddda9b692e2",
+      "leaf_object": {
+        "agent_id": "prod-ml-host-01",
+        "asset": {
+          "asset_id": "asset-015",
+          "type": "filesystem",
+          "uri": "file:///data/asset-015.bin"
+        },
+        "expected_hash": "000000000000000000000000000000000000000000000000000000000000000f",
+        "observed_hash": "000000000000000000000000000000000000000000000000000000000000000f",
+        "outcome": "verified",
+        "policy_hash": "2a8e3f9d4c5b6a7e8f1d2c3b4a5e6f7d8c9b0a1e2f3d4c5b6a7e8f9d0c1b2a3e",
+        "schema": "ario.agent.leaf/v1",
+        "verified_at": "2026-05-12T05:00:00.000Z"
+      }
+    }
+  ],
+  "vector_id": "merkle-tree-16-leaves"
+}

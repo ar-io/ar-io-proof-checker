@@ -1,0 +1,81 @@
+{
+  "description": "Three-leaf RFC 9162 tree (smallest odd-leaf case)",
+  "expected_root_hex": "69a0c347383197e96682ac6d00ef4099b46352d41221e7186757e7723da42e12",
+  "inclusion_proofs": [
+    {
+      "audit_path_hex": [
+        "f777c4b0b20745b63f47f6e619506437153fc42579d7bf6ce08738b72e055a08",
+        "9c31b022cca36279982f9797f25f348f0cac43e674bdda578179e0f4ff152b77"
+      ],
+      "leaf_index": 0
+    },
+    {
+      "audit_path_hex": [
+        "b86038b6576c5919e9221af09166ffb873a648e2a88cffaf54d4eb0d69097e72",
+        "9c31b022cca36279982f9797f25f348f0cac43e674bdda578179e0f4ff152b77"
+      ],
+      "leaf_index": 1
+    },
+    {
+      "audit_path_hex": [
+        "8ee940524726dd0f5a94e78dd5d6fa62aa4ab545d237500ab277714f1fd7e02b"
+      ],
+      "leaf_index": 2
+    }
+  ],
+  "leaf_count": 3,
+  "leaves": [
+    {
+      "leaf_hash_hex": "b86038b6576c5919e9221af09166ffb873a648e2a88cffaf54d4eb0d69097e72",
+      "leaf_object": {
+        "agent_id": "prod-ml-host-01",
+        "asset": {
+          "asset_id": "asset-000",
+          "type": "filesystem",
+          "uri": "file:///data/asset-000.bin"
+        },
+        "expected_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "observed_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "outcome": "verified",
+        "policy_hash": "2a8e3f9d4c5b6a7e8f1d2c3b4a5e6f7d8c9b0a1e2f3d4c5b6a7e8f9d0c1b2a3e",
+        "schema": "ario.agent.leaf/v1",
+        "verified_at": "2026-05-12T00:00:00.000Z"
+      }
+    },
+    {
+      "leaf_hash_hex": "f777c4b0b20745b63f47f6e619506437153fc42579d7bf6ce08738b72e055a08",
+      "leaf_object": {
+        "agent_id": "prod-ml-host-01",
+        "asset": {
+          "asset_id": "asset-001",
+          "type": "filesystem",
+          "uri": "file:///data/asset-001.bin"
+        },
+        "expected_hash": "0000000000000000000000000000000000000000000000000000000000000001",
+        "observed_hash": "0000000000000000000000000000000000000000000000000000000000000001",
+        "outcome": "verified",
+        "policy_hash": "2a8e3f9d4c5b6a7e8f1d2c3b4a5e6f7d8c9b0a1e2f3d4c5b6a7e8f9d0c1b2a3e",
+        "schema": "ario.agent.leaf/v1",
+        "verified_at": "2026-05-12T01:00:00.000Z"
+      }
+    },
+    {
+      "leaf_hash_hex": "9c31b022cca36279982f9797f25f348f0cac43e674bdda578179e0f4ff152b77",
+      "leaf_object": {
+        "agent_id": "prod-ml-host-01",
+        "asset": {
+          "asset_id": "asset-002",
+          "type": "filesystem",
+          "uri": "file:///data/asset-002.bin"
+        },
+        "expected_hash": "0000000000000000000000000000000000000000000000000000000000000002",
+        "observed_hash": "0000000000000000000000000000000000000000000000000000000000000002",
+        "outcome": "verified",
+        "policy_hash": "2a8e3f9d4c5b6a7e8f1d2c3b4a5e6f7d8c9b0a1e2f3d4c5b6a7e8f9d0c1b2a3e",
+        "schema": "ario.agent.leaf/v1",
+        "verified_at": "2026-05-12T02:00:00.000Z"
+      }
+    }
+  ],
+  "vector_id": "merkle-tree-03-leaves"
+}

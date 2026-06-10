@@ -24,7 +24,7 @@ interface Vector {
 
 function loadEnvelope(name: string): Envelope {
   const v = JSON.parse(
-    readFileSync(fileURLToPath(new URL(`../test-vectors/${name}`, import.meta.url)), "utf8"),
+    readFileSync(fileURLToPath(new URL(`../packages/proof/test-vectors/${name}`, import.meta.url)), "utf8"),
   ) as Vector;
   return {
     ...(v.inputs.envelope_pre_signature as unknown as Envelope),
