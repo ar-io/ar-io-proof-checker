@@ -26,8 +26,9 @@ This tool proves **"this artifact has a verifiable history."** It does **not** p
 - ✗ **Not** "this file is safe."
 
 Absence of a record is **not** proof of tampering — it may mean the bytes were never
-registered, were registered by an agent predating content-hash tagging, or the
-queried gateway hasn't indexed the transaction yet.
+registered, were registered by an agent predating content-hash tagging, or none of
+the queried gateways have indexed the transaction yet (every configured gateway is
+asked before "no match" is declared).
 
 ## Trust model
 
@@ -39,8 +40,12 @@ queried gateway hasn't indexed the transaction yet.
   that `payload.hash == <the hash it computed from your bytes>` **and** Ed25519-verifies
   the signature against the envelope's embedded `public_key`. A gateway that lies in
   a tag cannot produce a "verified" verdict.
-- **No ar.io service in the trust path.** You can point it at any Arweave gateway.
-  Verification is pure client-side cryptography against the public key in the envelope.
+- **No ar.io service in the trust path.** You can point it at any Arweave gateway —
+  or several: the gateway field takes a comma-separated list, tried in order with
+  fallback on failure *and* on empty results (defaults: `turbo-gateway.com`,
+  `arweave.net`). The UI shows which gateway served the result, but no gateway is
+  trusted either way — verification is pure client-side cryptography against the
+  public key in the envelope, re-run on every envelope regardless of source.
 - **You still establish that the key is the agent's key.** The tool shows the signing
   public key; binding it to a real-world identity is out-of-band (same as
   `ariod verify`). See `ar-io-agent`'s `docs/auditor-recipe.md` §4.
@@ -48,13 +53,14 @@ queried gateway hasn't indexed the transaction yet.
 ## How it works
 
 ```
-file ──FileReader──▶ SHA-256 (WebCrypto, in-browser)
+file ──file.stream()──▶ streaming SHA-256 (WASM, in-browser, flat memory)
                           │ 64-hex hash
                           ▼
    GraphQL POST  transactions(tags:[App-Name=ario-agent, Asset-Hash=<hash>])
+     (each configured gateway in order; falls through on failure or empty)
                           │ candidate tx_ids
                           ▼
-   GET <gateway>/raw/<tx_id>  ──▶ envelope JSON
+   GET <gateway>/raw/<tx_id>  ──▶ envelope JSON   (per-tx gateway fallback)
                           │
                           ▼
    verify (client-side):  JCS-canonicalize → recompute payload_hash
@@ -63,6 +69,12 @@ file ──FileReader──▶ SHA-256 (WebCrypto, in-browser)
                           ▼
    render provenance timeline + honest verdict
 ```
+
+**Any file size.** Hashing streams through an incremental WASM SHA-256
+([`hash-wasm`](https://github.com/Daninet/hash-wasm) — deliberately *not* a
+trust-path dependency; a hash bug can only cause a false negative, never a false
+"verified"), so memory stays flat for multi-GB models. Nothing is refused on size;
+large files get an honest time advisory and a live progress line instead.
 
 ## Relationship to ar-io-agent
 
@@ -107,7 +119,7 @@ npm run build      # static bundle into dist/ (permaweb-deployable)
 ### Try it with sample data
 
 [`samples/`](samples/) has ready-made files that exercise each verdict against
-real on-chain data (keep the gateway at the default `turbo-gateway.com`) — a
+real on-chain data (keep the gateway field at its defaults) — a
 verifiable file, a known-good baseline, a tampered version, and an unregistered
 one. They are **manual demo fixtures, not part of `npm test`** (the test suite is
 hermetic); see [`samples/README.md`](samples/README.md) for expected verdicts and

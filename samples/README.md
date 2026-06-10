@@ -1,7 +1,7 @@
 # Sample files (manual demo fixtures)
 
 Drop these into the running app (`npm run dev`, or a deployed build) to see each
-verdict. **Keep the gateway field at its default (`turbo-gateway.com`).**
+verdict. **Keep the gateway field at its defaults (`turbo-gateway.com, arweave.net`).**
 
 > These are **manual / demo fixtures, not automated tests.** The automated suite
 > (`npm test`) is hermetic — it uses the vendored `test-vectors/` and a mocked
@@ -29,7 +29,7 @@ verdict. **Keep the gateway field at its default (`turbo-gateway.com`).**
 - **Do not edit the bytes.** Even adding a trailing newline changes the hash and
   the file will read as "no provenance found."
 - **Gateway-dependent.** A "found" verdict requires the queried gateway to have
-  indexed the envelopes above. The default `turbo-gateway.com` has them. If a
+  indexed the envelopes above. The default `turbo-gateway.com` has them (and with multi-gateway fallback, an unindexed first gateway falls through). If a
   sample unexpectedly reads "no match," it's almost always gateway/indexing — not
   a bug in the app (the bytes are permanently on Arweave regardless).
 - Regenerate or add fixtures by registering files with `ariod` (with `Asset-Hash`
