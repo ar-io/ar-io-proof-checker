@@ -33,7 +33,13 @@ export function renderReport(report: ProvenanceReport): HTMLElement {
   root.appendChild(banner);
 
   root.appendChild(kv("Your file's SHA-256", report.fileHash, "mono"));
-  root.appendChild(kv("Queried gateway", report.gateway));
+  // Attribute the result to the gateway whose view produced it; with a
+  // fallback list, also show everything that was queried. Informational only —
+  // no gateway is trusted, every envelope was re-verified client-side.
+  root.appendChild(kv("Result served by", report.gateway));
+  if (report.gatewaysQueried.length > 1) {
+    root.appendChild(kv("Gateways queried", report.gatewaysQueried.join(", ")));
+  }
 
   if (report.candidatesTruncated) {
     root.appendChild(
@@ -72,7 +78,7 @@ export function renderReport(report: ProvenanceReport): HTMLElement {
       root.appendChild(disclaimer(report));
       break;
     case "no-match":
-      root.appendChild(noMatchCopy());
+      root.appendChild(noMatchCopy(report));
       break;
     case "error":
       root.appendChild(errorCopy(report.error ?? "unknown error"));
@@ -304,22 +310,22 @@ function uniqueSigners(matches: Match[]): string {
   return [...set].join(", ") || "an agent";
 }
 
-function noMatchCopy(): HTMLElement {
+// "No match" now means every configured gateway was asked (discovery falls
+// through on empty results), so the copy can say so — and the old "point the
+// tool at a different gateway" hint is gone, because we already did that.
+function noMatchCopy(report: ProvenanceReport): HTMLElement {
+  const n = report.gatewaysQueried.length;
+  const where =
+    n > 1 ? `any of the ${n} queried gateways` : "the queried gateway";
   const box = el("div", "explain");
   box.appendChild(
-    el(
-      "p",
-      "",
-      "These bytes have no ar.io provenance record on the queried gateway. This is " +
-        "NOT proof of tampering.",
-    ),
+    el("p", "", `These bytes have no ar.io provenance record on ${where}. This is NOT proof of tampering.`),
   );
   const ul = el("ul", "");
   for (const reason of [
     "they were never registered, or",
     "they were registered by an agent predating content-hash tagging, or",
-    "the gateway hasn't indexed the transaction yet (try again shortly), or",
-    "a different gateway has it — point the tool elsewhere and retry.",
+    `the ${n > 1 ? "gateways haven't" : "gateway hasn't"} indexed the transaction yet (try again shortly).`,
   ]) {
     ul.appendChild(el("li", "", reason));
   }
@@ -331,7 +337,9 @@ function errorCopy(message: string): HTMLElement {
   const box = el("div", "explain");
   box.appendChild(el("p", "", "The lookup could not complete, so the verdict is unknown."));
   box.appendChild(kv("Detail", message, "mono"));
-  box.appendChild(el("p", "muted", "Try again, or point the tool at a different gateway."));
+  box.appendChild(
+    el("p", "muted", "Every configured gateway failed. Try again, or point the tool at different gateways."),
+  );
   return box;
 }
 

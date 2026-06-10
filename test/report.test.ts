@@ -69,6 +69,8 @@ describe("buildReport", () => {
     expect(report.tool.name).toBe("ar-io-proof-checker");
     expect(report.verdict).toBe("provenance-found");
     expect(report.file_sha256).toBe(REGISTERED_HASH);
+    expect(report.gateway).toBe(GATEWAY);
+    expect(report.gateways_queried).toEqual([GATEWAY]);
     expect(report.matches.length).toBeGreaterThan(0);
     expect(report.scope.length).toBeGreaterThan(0); // disclaimers travel with it
     // The embedded raw envelope is what makes it re-verifiable.

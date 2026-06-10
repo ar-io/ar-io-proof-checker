@@ -64,7 +64,8 @@ export interface ProofCheckReport {
   // the per-event Arweave block times inside `histories`.
   generated_at: string;
   generated_at_note: string;
-  gateway: string;
+  gateway: string; // the gateway whose view produced the result
+  gateways_queried: string[]; // the full ordered fallback list that was configured
   file_sha256: string;
   verdict: Verdict;
   scope: readonly string[];
@@ -98,6 +99,7 @@ export function buildReport(report: ProvenanceReport): ProofCheckReport {
     generated_at: new Date().toISOString(),
     generated_at_note: "Client wall-clock; advisory only. Trusted times are the Arweave block times in histories.",
     gateway: report.gateway,
+    gateways_queried: report.gatewaysQueried,
     file_sha256: report.fileHash,
     verdict: report.verdict,
     scope: SCOPE_DISCLAIMER,
@@ -284,6 +286,7 @@ export function reportToHtml(report: ProofCheckReport): string {
 <p class="verdict">${esc(verdictLabel[report.verdict])}</p>
 <div class="kv"><b>File SHA-256</b><span class="mono small">${esc(report.file_sha256)}</span></div>
 <div class="kv"><b>Gateway</b>${esc(report.gateway)}</div>
+<div class="kv"><b>Gateways queried</b>${esc((report.gateways_queried ?? [report.gateway]).join(", "))}</div>
 <div class="kv"><b>Generated</b>${esc(report.generated_at)} <span class="muted">(advisory client clock)</span></div>
 <div class="kv"><b>Tool</b>${esc(report.tool.name)} ${esc(report.tool.version)} · ${esc(report.spec)}</div>
 ${report.matches.length ? `<h2>Matched records</h2><table><tr><th>event</th><th>tenant</th><th>agent</th><th>role</th><th>signing key</th><th>tx</th></tr>${matchRows}</table>` : ""}

@@ -93,6 +93,40 @@ describe("truncation note (B5)", () => {
   });
 });
 
+describe("multi-gateway surfacing", () => {
+  it("attributes the result to the serving gateway and lists everything queried", () => {
+    const text =
+      renderReport(
+        report({
+          gateway: "https://gw2.example",
+          gatewaysQueried: ["https://gw1.example", "https://gw2.example"],
+        }),
+      ).textContent ?? "";
+    expect(text).toContain("Result served by");
+    expect(text).toContain("https://gw2.example");
+    expect(text).toContain("Gateways queried");
+    expect(text).toContain("https://gw1.example, https://gw2.example");
+  });
+
+  it("omits the queried list for a single gateway", () => {
+    const text = renderReport(report({})).textContent ?? "";
+    expect(text).not.toContain("Gateways queried");
+  });
+
+  it("no-match copy reflects that every configured gateway was asked", () => {
+    const text =
+      renderReport(
+        report({
+          gatewaysQueried: ["https://gw1.example", "https://gw2.example"],
+        }),
+      ).textContent ?? "";
+    expect(text).toContain("any of the 2 queried gateways");
+    expect(text).toContain("NOT proof of tampering");
+    // The old per-gateway "point the tool elsewhere" hint is redundant now.
+    expect(text).not.toContain("point the tool elsewhere");
+  });
+});
+
 describe("printable report popup fallback (B17)", () => {
   it("downloads the HTML when window.open is blocked (returns null)", () => {
     // Provide blob URL plumbing happy-dom doesn't implement.

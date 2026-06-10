@@ -27,8 +27,14 @@
       <input id="file-input" type="file" hidden />
 
       <label class="gateway-row">
-        <span>Gateway</span>
-        <input id="gateway" type="text" spellcheck="false" autocomplete="off" />
+        <span>Gateways</span>
+        <input
+          id="gateway"
+          type="text"
+          spellcheck="false"
+          autocomplete="off"
+          title="Comma-separated, tried in order until one knows these bytes. No gateway is trusted — every result is re-verified in your browser."
+        />
       </label>
 
       <details class="reverify">
