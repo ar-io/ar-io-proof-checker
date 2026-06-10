@@ -100,11 +100,12 @@ interface PeersResponse {
 // Registry-driven discovery: ar.io gateways expose the peer gateways they
 // know at GET /ar-io/peers (plain HTTP, CORS-open — no AO process, no SDK).
 // Asks each chain gateway in order and returns up to `limit` peers from the
-// first list served, best dataWeight first, https-only, normalized, and
-// deduped against the chain itself. The result is a HINT for fallback depth,
+// first list that yields any USABLE peer (https-only, normalized, deduped
+// against the chain itself), best dataWeight first; a served-but-useless list
+// falls through to the next gateway. The result is a HINT for fallback depth,
 // never trust: every envelope from a discovered peer is verified exactly like
 // one from a configured gateway, and discovered peers are only ever appended
-// AFTER the configured chain. Returns [] when no gateway serves a list.
+// AFTER the configured chain. Returns [] when no gateway yields a peer.
 export async function fetchRegistryPeers(
   chain: string[],
   limit: number = REGISTRY_PEER_LIMIT,
@@ -134,7 +135,7 @@ export async function fetchRegistryPeers(
       if (!chain.includes(norm) && !out.includes(norm)) out.push(norm);
       if (out.length >= limit) break;
     }
-    return out;
+    if (out.length > 0) return out;
   }
   return [];
 }

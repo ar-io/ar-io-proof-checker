@@ -124,6 +124,20 @@ describe("fetchRegistryPeers", () => {
     expect(got).not.toContain("https://gw1.example");
   });
 
+  it("falls through when a served list yields no usable peer", async () => {
+    stubPeersFetch({
+      // Reachable, but everything in it is unusable (http-only / already known).
+      "https://gw1.example": peers({
+        a: { url: "http://plain.example", dataWeight: 9 },
+        b: { url: "https://gw1.example", dataWeight: 8 },
+      }),
+      "https://gw2.example": peers({ c: { url: "https://peer.example", dataWeight: 1 } }),
+    });
+    expect(await fetchRegistryPeers(["https://gw1.example", "https://gw2.example"])).toEqual([
+      "https://peer.example",
+    ]);
+  });
+
   it("returns [] when no gateway serves a list (best-effort, never throws)", async () => {
     stubPeersFetch({});
     expect(await fetchRegistryPeers(["https://gw1.example", "https://gw2.example"])).toEqual([]);

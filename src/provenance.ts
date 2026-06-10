@@ -76,18 +76,18 @@ export interface CheckOptions {
   registryPeers?: () => Promise<string[]>;
 }
 
-// Run the full check for a file against an ordered gateway list.
+// Run the full check for a file against an ordered gateway list. The registry
+// fetch (opts.registryPeers) is NOT started here — it fires only if discovery
+// exhausts the configured chain, so a successful check makes no registry
+// request at all.
 export async function checkProvenance(
   file: Blob,
   gateways: string[] = DEFAULT_GATEWAYS,
   onProgress?: HashProgress,
   opts?: CheckOptions,
 ): Promise<ProvenanceReport> {
-  // Kick the (cheap) registry fetch off now so it overlaps the (potentially
-  // minutes-long) hash; it resolves to [] on any failure.
-  const peers = opts?.registryPeers ? opts.registryPeers().catch(() => [] as string[]) : undefined;
   const fileHash = await sha256OfFile(file, onProgress);
-  return checkProvenanceForHash(fileHash, gateways, peers ? { registryPeers: () => peers } : undefined);
+  return checkProvenanceForHash(fileHash, gateways, opts);
 }
 
 // Same as checkProvenance but starting from an already-computed hash. Separated

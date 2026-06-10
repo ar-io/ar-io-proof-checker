@@ -113,6 +113,18 @@ describe("multi-gateway surfacing", () => {
     expect(text).not.toContain("Gateways queried");
   });
 
+  it("discloses registry-discovered fallback gateways when they were queried", () => {
+    const text =
+      renderReport(
+        report({
+          gatewaysQueried: ["https://gw1.example", "https://peer.example"],
+          registryPeersUsed: ["https://peer.example"],
+        }),
+      ).textContent ?? "";
+    expect(text).toContain("discovered from the ar.io registry");
+    expect(text).toContain("verified in your browser");
+  });
+
   it("no-match copy reflects that every configured gateway was asked", () => {
     const text =
       renderReport(

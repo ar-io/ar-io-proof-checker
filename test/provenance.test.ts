@@ -8,7 +8,12 @@ import { fileURLToPath } from "node:url";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { MAX_CANDIDATES, assessContinuity, checkProvenanceForHash } from "../src/provenance";
+import {
+  MAX_CANDIDATES,
+  assessContinuity,
+  checkProvenance,
+  checkProvenanceForHash,
+} from "../src/provenance";
 import type { AssetEvent, Envelope } from "../src/types";
 
 interface Vector {
@@ -227,6 +232,21 @@ describe("registry peer extension", () => {
     expect(r.verdict).toBe("provenance-found");
     expect(peersFn).not.toHaveBeenCalled();
     expect(r.registryPeersUsed).toBeUndefined();
+  });
+
+  it("checkProvenance (file path) threads opts: an exhausted chain consults the registry", async () => {
+    // Unknown bytes → reachable-but-empty chain → extension consulted.
+    stubHostFetch({ configured: "empty", peerHasIt: false });
+    const peersFn = vi.fn(PEERS);
+    const r = await checkProvenance(
+      new Blob([new Uint8Array([1, 2, 3]) as unknown as BlobPart]),
+      [GATEWAY],
+      undefined,
+      { registryPeers: peersFn },
+    );
+    expect(peersFn).toHaveBeenCalledTimes(1);
+    expect(r.verdict).toBe("no-match");
+    expect(r.registryPeersUsed).toEqual(["https://peer.example"]);
   });
 });
 

@@ -32,6 +32,13 @@ npm run preview    # serve the production build
 
 Run a single test file: `npx vitest run test/report.test.ts`.
 
+Live / opt-in checks (network-dependent, never part of `npm test` or CI):
+
+```bash
+ARIO_LIVE_E2E=1 npx vitest run test/live.e2e.test.ts   # real gateways + on-chain samples + 3 GiB streaming-hash check
+node scripts/browser-e2e.mjs                            # real headless-Chromium run of the production build (see script header for setup)
+```
+
 ## Architecture (`src/`)
 
 The flow is: **file → hash → discover → fetch → verify → history → render**, with report export/import bolted onto the result.
