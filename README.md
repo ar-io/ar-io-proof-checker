@@ -88,16 +88,19 @@ large files get an honest time advisory and a live progress line instead.
 Depends on [`ar-io-agent`](../ar-io-agent) **for specification only — no code dependency**:
 
 - the envelope schema (`docs/artifact.md`),
-- the conformance **test vectors** (vendored under [`test-vectors/`](test-vectors/),
-  synced from the agent repo — see that directory's README),
+- the conformance **test vectors** (the full `test-vectors-v1.0` corpus, vendored
+  under [`packages/proof/test-vectors/`](packages/proof/test-vectors/) with per-file
+  SHA gating — see that directory's `VENDORING.md`),
 - the `Asset-Hash` / `Observed-Hash` / `Baseline-Hash` tag convention
   (`docs/artifact.md` §11), introduced for exactly this tool.
 
-The verifier here is an **independent implementation** of the same algorithm. That is
-deliberate: a second, conformance-tested implementation is what demonstrates the
-product's core claim — auditor-independent verification with no ar.io code in the
-trust path. Conformance is enforced in CI: the verifier must reproduce every test
-vector byte-for-byte, or the build fails.
+The verifier here is an **independent implementation** of the same algorithm,
+packaged as the [`@ar-io/proof`](packages/proof/) npm workspace (the TypeScript
+sibling of the Python [`ar-io-proof`](https://github.com/ar-io/ar-io-proof) kernel;
+MIT; not yet published). That is deliberate: a second, conformance-tested
+implementation is what demonstrates the product's core claim — auditor-independent
+verification with no ar.io code in the trust path. Conformance is enforced in CI:
+the verifier must reproduce every test vector byte-for-byte, or the build fails.
 
 > **Coverage note:** reverse lookup only finds events anchored on or after the
 > `ar-io-agent` release that introduced the content-hash tags. Older envelopes remain
