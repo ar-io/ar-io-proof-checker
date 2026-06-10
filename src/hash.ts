@@ -57,6 +57,12 @@ export async function sha256OfFile(file: Blob, onProgress?: HashProgress): Promi
   hasher.init();
   const reader = file.stream().getReader();
   let hashed = 0;
+  // When the file streams from cache, reader.read() resolves as a microtask
+  // and this loop never yields a macrotask — the browser can't repaint and
+  // the progress UI freezes for the entire hash (observed: a 2.5 GB hash
+  // rendered nothing for 30+ s). Yield one macrotask periodically so paint
+  // (and input) get a turn; the cost over multi-GB inputs is negligible.
+  let lastYield = Date.now();
   try {
     for (;;) {
       const { value, done } = await reader.read();
@@ -64,6 +70,10 @@ export async function sha256OfFile(file: Blob, onProgress?: HashProgress): Promi
       hasher.update(value);
       hashed += value.byteLength;
       onProgress?.(hashed, file.size);
+      if (Date.now() - lastYield > 50) {
+        await new Promise((r) => setTimeout(r, 0));
+        lastYield = Date.now();
+      }
     }
   } finally {
     reader.releaseLock();

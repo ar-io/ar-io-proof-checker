@@ -139,6 +139,18 @@ describe("multi-gateway surfacing", () => {
   });
 });
 
+describe("error verdict", () => {
+  it("renders the unknown-verdict copy with the failure detail", () => {
+    const text =
+      renderReport(
+        report({ verdict: "error", error: "all 2 gateway(s) failed: …" }),
+      ).textContent ?? "";
+    expect(text).toContain("verdict is unknown");
+    expect(text).toContain("all 2 gateway(s) failed");
+    expect(text).toContain("Every configured gateway failed");
+  });
+});
+
 describe("printable report popup fallback (B17)", () => {
   it("downloads the HTML when window.open is blocked (returns null)", () => {
     // Provide blob URL plumbing happy-dom doesn't implement.
