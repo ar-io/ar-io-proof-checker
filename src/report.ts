@@ -65,7 +65,8 @@ export interface ProofCheckReport {
   generated_at: string;
   generated_at_note: string;
   gateway: string; // the gateway whose view produced the result
-  gateways_queried: string[]; // the full ordered fallback list that was configured
+  gateways_queried: string[]; // everything actually asked, in order (incl. registry peers)
+  registry_peers_used?: string[]; // fallback gateways discovered via /ar-io/peers, if queried
   file_sha256: string;
   verdict: Verdict;
   scope: readonly string[];
@@ -100,6 +101,7 @@ export function buildReport(report: ProvenanceReport): ProofCheckReport {
     generated_at_note: "Client wall-clock; advisory only. Trusted times are the Arweave block times in histories.",
     gateway: report.gateway,
     gateways_queried: report.gatewaysQueried,
+    ...(report.registryPeersUsed?.length ? { registry_peers_used: report.registryPeersUsed } : {}),
     file_sha256: report.fileHash,
     verdict: report.verdict,
     scope: SCOPE_DISCLAIMER,

@@ -40,6 +40,18 @@ export function renderReport(report: ProvenanceReport): HTMLElement {
   if (report.gatewaysQueried.length > 1) {
     root.appendChild(kv("Gateways queried", report.gatewaysQueried.join(", ")));
   }
+  if (report.registryPeersUsed?.length) {
+    root.appendChild(
+      el(
+        "p",
+        "muted",
+        `The configured gateways were exhausted, so ${report.registryPeersUsed.length} fallback ` +
+          "gateway(s) discovered from the ar.io registry (/ar-io/peers) were also queried. " +
+          "Discovered gateways are search hints only — every envelope is verified in your browser " +
+          "regardless of which gateway served it.",
+      ),
+    );
+  }
 
   if (report.candidatesTruncated) {
     root.appendChild(

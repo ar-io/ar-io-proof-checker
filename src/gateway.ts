@@ -15,14 +15,17 @@
 
 import type { Envelope } from "./types";
 
-// Defaults per proof-checker.md §14 #5: the ar.io gateway plus arweave.net,
-// user-overridable. Both are interchangeable untrusted delivery surfaces
-// (auditor-recipe.md); a two-entry default means fallback actually exercises
-// in real use. Registry-driven gateway discovery is deliberately NOT here —
-// an automatic list fetch would add an outbound request (invariant #1) and an
-// influence surface over which gateways get queried; revisit at P5 as a
-// user-triggered action.
+// Static anchors per proof-checker.md §14 #5: the ar.io gateway plus
+// arweave.net, user-overridable. Both are interchangeable untrusted delivery
+// surfaces (auditor-recipe.md). The full default chain prepends the gateway
+// SERVING the app (see defaultGatewayChain) and can lazily extend itself from
+// the ar.io registry (see fetchRegistryPeers) — but these anchors are always
+// queried before any registry-discovered peer, so a poisoned peer list can
+// never preempt them.
 export const DEFAULT_GATEWAYS = ["https://turbo-gateway.com", "https://arweave.net"];
+
+// How many registry-discovered peers may extend the fallback chain.
+export const REGISTRY_PEER_LIMIT = 4;
 
 // Per-request ceiling so a hung/slow gateway can't leave the UI spinning
 // forever — without this a stalled fetch never settles. Per attempt, so the
@@ -61,6 +64,79 @@ export function normalizeGateways(input: string): string[] {
     if (!out.includes(gw)) out.push(gw);
   }
   return out.length > 0 ? out : [...DEFAULT_GATEWAYS];
+}
+
+// When the app is served through an ar.io gateway (ArNS:
+// proof-checker.<gateway-host>, or an Arweave sandbox subdomain), the parent
+// of the hostname IS a gateway — one that is provably up and CORS-reachable,
+// because it just delivered this page. Deriving it costs zero requests.
+// Returns null when there is no parent to derive (apex domains, localhost,
+// IP literals); a wrong guess is harmless — it just falls through.
+export function servingGatewayCandidate(hostname: string): string | null {
+  if (!hostname || hostname.includes(":") || /^[0-9.]+$/.test(hostname)) return null;
+  const labels = hostname.split(".");
+  if (labels.length < 3 || labels.some((l) => !l)) return null;
+  try {
+    return normalizeGateway(labels.slice(1).join("."));
+  } catch {
+    return null;
+  }
+}
+
+// The auto-assembled default chain: serving gateway (when derivable) first,
+// then the static anchors, deduped, order-preserving.
+export function defaultGatewayChain(hostname?: string): string[] {
+  const chain: string[] = [];
+  const serving = hostname ? servingGatewayCandidate(hostname) : null;
+  if (serving) chain.push(serving);
+  for (const gw of DEFAULT_GATEWAYS) if (!chain.includes(gw)) chain.push(gw);
+  return chain;
+}
+
+interface PeersResponse {
+  gateways?: Record<string, { url?: unknown; dataWeight?: unknown }>;
+}
+
+// Registry-driven discovery: ar.io gateways expose the peer gateways they
+// know at GET /ar-io/peers (plain HTTP, CORS-open — no AO process, no SDK).
+// Asks each chain gateway in order and returns up to `limit` peers from the
+// first list served, best dataWeight first, https-only, normalized, and
+// deduped against the chain itself. The result is a HINT for fallback depth,
+// never trust: every envelope from a discovered peer is verified exactly like
+// one from a configured gateway, and discovered peers are only ever appended
+// AFTER the configured chain. Returns [] when no gateway serves a list.
+export async function fetchRegistryPeers(
+  chain: string[],
+  limit: number = REGISTRY_PEER_LIMIT,
+): Promise<string[]> {
+  for (const gw of chain) {
+    let body: PeersResponse;
+    try {
+      const res = await fetchWithTimeout(`${trimSlash(gw)}/ar-io/peers`);
+      if (!res.ok) continue;
+      body = (await res.json()) as PeersResponse;
+    } catch {
+      continue;
+    }
+    const entries = Object.values(body.gateways ?? {})
+      .filter((p): p is { url: string; dataWeight?: number } =>
+        typeof p?.url === "string" && p.url.startsWith("https://"),
+      )
+      .sort((a, b) => (Number(b.dataWeight) || 0) - (Number(a.dataWeight) || 0));
+    const out: string[] = [];
+    for (const p of entries) {
+      let norm: string;
+      try {
+        norm = normalizeGateway(p.url);
+      } catch {
+        continue;
+      }
+      if (!chain.includes(norm) && !out.includes(norm)) out.push(norm);
+      if (out.length >= limit) break;
+    }
+    return out;
+  }
+  return [];
 }
 
 async function fetchWithTimeout(

@@ -2,10 +2,14 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   DEFAULT_GATEWAYS,
+  REGISTRY_PEER_LIMIT,
+  defaultGatewayChain,
   fetchEnvelope,
+  fetchRegistryPeers,
   findEnvelopeTxs,
   normalizeGateway,
   normalizeGateways,
+  servingGatewayCandidate,
 } from "../src/gateway";
 
 afterEach(() => {
@@ -47,6 +51,82 @@ describe("normalizeGateways (multi-gateway)", () => {
   });
   it("throws on any invalid entry rather than silently dropping it", () => {
     expect(() => normalizeGateways("gw.example, javascript:alert(1)")).toThrow();
+  });
+});
+
+describe("servingGatewayCandidate / defaultGatewayChain", () => {
+  it("derives the parent gateway from an ArNS-style subdomain", () => {
+    expect(servingGatewayCandidate("proof-checker.turbo-gateway.com")).toBe(
+      "https://turbo-gateway.com",
+    );
+    // Arweave sandbox subdomains work the same way.
+    expect(servingGatewayCandidate("abc123def.arweave.net")).toBe("https://arweave.net");
+  });
+  it("returns null when there is nothing to derive (dev / apex / IP)", () => {
+    expect(servingGatewayCandidate("localhost")).toBeNull();
+    expect(servingGatewayCandidate("127.0.0.1")).toBeNull();
+    expect(servingGatewayCandidate("[::1]")).toBeNull();
+    expect(servingGatewayCandidate("ar.io")).toBeNull(); // apex: no ArNS label to strip
+    expect(servingGatewayCandidate("")).toBeNull();
+  });
+  it("builds the chain serving-first, anchors after, deduped", () => {
+    expect(defaultGatewayChain("proof-checker.gw.example")).toEqual([
+      "https://gw.example",
+      ...DEFAULT_GATEWAYS,
+    ]);
+    // Serving gateway that IS an anchor doesn't duplicate.
+    expect(defaultGatewayChain("proof-checker.turbo-gateway.com")).toEqual(DEFAULT_GATEWAYS);
+    // No hostname (or underivable) → anchors only.
+    expect(defaultGatewayChain(undefined)).toEqual(DEFAULT_GATEWAYS);
+    expect(defaultGatewayChain("localhost")).toEqual(DEFAULT_GATEWAYS);
+  });
+});
+
+describe("fetchRegistryPeers", () => {
+  function stubPeersFetch(byGateway: Record<string, Response | (() => Response)>): void {
+    vi.stubGlobal("fetch", async (url: string) => {
+      const origin = new URL(url).origin;
+      expect(url).toBe(`${origin}/ar-io/peers`);
+      const r = byGateway[origin];
+      if (!r) throw new TypeError("network down");
+      return typeof r === "function" ? r() : r;
+    });
+  }
+  const peers = (entries: Record<string, { url?: string; dataWeight?: number }>) =>
+    Response.json({ gateways: entries });
+
+  it("returns peers from the first gateway that serves a list, best dataWeight first", async () => {
+    stubPeersFetch({
+      "https://gw1.example": new Response("boom", { status: 502 }),
+      "https://gw2.example": peers({
+        "a:443": { url: "https://peer-low.example", dataWeight: 1 },
+        "b:443": { url: "https://peer-high.example", dataWeight: 50 },
+      }),
+    });
+    expect(await fetchRegistryPeers(["https://gw1.example", "https://gw2.example"])).toEqual([
+      "https://peer-high.example",
+      "https://peer-low.example",
+    ]);
+  });
+
+  it("filters non-https peers, dedupes against the chain, and caps at the limit", async () => {
+    const entries: Record<string, { url?: string; dataWeight?: number }> = {
+      insecure: { url: "http://plain.example", dataWeight: 99 },
+      self: { url: "https://gw1.example", dataWeight: 98 }, // already in the chain
+    };
+    for (let i = 0; i < REGISTRY_PEER_LIMIT + 3; i++) {
+      entries[`p${i}`] = { url: `https://peer${i}.example`, dataWeight: 10 - i };
+    }
+    stubPeersFetch({ "https://gw1.example": peers(entries) });
+    const got = await fetchRegistryPeers(["https://gw1.example"]);
+    expect(got).toHaveLength(REGISTRY_PEER_LIMIT);
+    expect(got).not.toContain("http://plain.example");
+    expect(got).not.toContain("https://gw1.example");
+  });
+
+  it("returns [] when no gateway serves a list (best-effort, never throws)", async () => {
+    stubPeersFetch({});
+    expect(await fetchRegistryPeers(["https://gw1.example", "https://gw2.example"])).toEqual([]);
   });
 });
 

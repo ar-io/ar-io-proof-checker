@@ -3,7 +3,7 @@
 // network call is made until the user supplies a file.
 
 import { checkProvenance } from "./provenance";
-import { DEFAULT_GATEWAYS, normalizeGateways } from "./gateway";
+import { defaultGatewayChain, fetchRegistryPeers, normalizeGateways } from "./gateway";
 import { fileSizeAdvisory, formatBytes } from "./hash";
 import { renderReport, renderReimport } from "./render";
 import { REPORT_SPEC, verifyReport, type ProofCheckReport } from "./report";
@@ -15,8 +15,13 @@ const gatewayInput = byId<HTMLInputElement>("gateway");
 const reportInput = byId<HTMLInputElement>("report-input");
 const results = byId("results");
 
-gatewayInput.value = DEFAULT_GATEWAYS.join(", ");
-gatewayInput.placeholder = DEFAULT_GATEWAYS.join(", ");
+// The default chain adapts to where the app is served from: behind an ar.io
+// gateway (ArNS / sandbox subdomain) that gateway heads the list — it just
+// delivered this page, so it's up and CORS-reachable. On localhost or a
+// non-gateway host this is a no-op and the static anchors stand alone.
+const DEFAULT_CHAIN = defaultGatewayChain(window.location.hostname);
+gatewayInput.value = DEFAULT_CHAIN.join(", ");
+gatewayInput.placeholder = DEFAULT_CHAIN.join(", ");
 
 // Monotonic token so a slower earlier request can't overwrite a newer result
 // (B2). Each run captures the token at start; on completion it only renders if
@@ -97,9 +102,18 @@ async function run(file: File): Promise<void> {
   );
   show(progress.box);
   try {
-    const report = await checkProvenance(file, gateways, (done, total) => {
-      if (token === activeRun) progress.update(done, total);
-    });
+    // Registry-driven fallback discovery only applies to the untouched default
+    // chain — a user-typed list is respected strictly (their gateways, no
+    // silent additions).
+    const isDefaultChain = gateways.join(", ") === DEFAULT_CHAIN.join(", ");
+    const report = await checkProvenance(
+      file,
+      gateways,
+      (done, total) => {
+        if (token === activeRun) progress.update(done, total);
+      },
+      isDefaultChain ? { registryPeers: () => fetchRegistryPeers(gateways) } : undefined,
+    );
     if (token === activeRun) show(renderReport(report));
   } catch (e) {
     // checkProvenance handles its own errors into a report; this only fires on

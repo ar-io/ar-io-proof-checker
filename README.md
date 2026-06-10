@@ -42,10 +42,17 @@ asked before "no match" is declared).
   a tag cannot produce a "verified" verdict.
 - **No ar.io service in the trust path.** You can point it at any Arweave gateway —
   or several: the gateway field takes a comma-separated list, tried in order with
-  fallback on failure *and* on empty results (defaults: `turbo-gateway.com`,
-  `arweave.net`). The UI shows which gateway served the result, but no gateway is
-  trusted either way — verification is pure client-side cryptography against the
-  public key in the envelope, re-run on every envelope regardless of source.
+  fallback on failure *and* on empty results. The default chain is
+  deployment-aware: when the app is served through an ar.io gateway (ArNS, e.g.
+  `proof-checker.<gateway>`), that gateway heads the list, followed by the static
+  anchors `turbo-gateway.com` and `arweave.net`. If every default gateway is
+  exhausted, the tool discovers a few more from the ar.io registry (the chain's
+  own `GET /ar-io/peers`) and tries those too — discovered peers are appended
+  after the anchors, never before, and a user-typed list is respected strictly
+  (no discovery, no silent additions). The UI shows which gateway served the
+  result, but no gateway is trusted either way — verification is pure client-side
+  cryptography against the public key in the envelope, re-run on every envelope
+  regardless of source.
 - **You still establish that the key is the agent's key.** The tool shows the signing
   public key; binding it to a real-world identity is out-of-band (same as
   `ariod verify`). See `ar-io-agent`'s `docs/auditor-recipe.md` §4.

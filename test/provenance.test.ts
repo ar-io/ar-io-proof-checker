@@ -149,6 +149,87 @@ describe("checkProvenanceForHash", () => {
   });
 });
 
+// Registry-driven extension: discovered peers are consulted ONLY when the
+// configured chain is exhausted, and only ever appended after it.
+describe("registry peer extension", () => {
+  // Per-host stub: configured gateway behavior vs peer gateway behavior.
+  function stubHostFetch(opts: {
+    configured: "fail" | "empty";
+    peerHasIt?: boolean;
+    peerFails?: boolean;
+  }): void {
+    vi.stubGlobal("fetch", async (input: string | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      const origin = new URL(url).origin;
+      const isPeer = origin === "https://peer.example";
+      if (url.endsWith("/graphql")) {
+        if (!isPeer && opts.configured === "fail") {
+          return new Response("boom", { status: 502, statusText: "Bad Gateway" });
+        }
+        if (isPeer && opts.peerFails) {
+          return new Response("boom", { status: 502, statusText: "Bad Gateway" });
+        }
+        const body = typeof init?.body === "string" ? init.body : "";
+        const isAssetQuery = body.includes("Asset-Id");
+        const list =
+          isPeer && opts.peerHasIt && !isAssetQuery ? [{ node: { id: "TX_REG", tags: [], block: null } }] : [];
+        return Response.json({ data: { transactions: { edges: list } } });
+      }
+      if (/\/raw\//.test(url)) return Response.json(registered);
+      throw new Error(`unexpected fetch ${url}`);
+    });
+  }
+  const PEERS = () => Promise.resolve(["https://peer.example"]);
+
+  it("rescues an all-failed chain via a discovered peer (error → found)", async () => {
+    stubHostFetch({ configured: "fail", peerHasIt: true });
+    const r = await checkProvenanceForHash(REGISTERED_HASH, [GATEWAY], { registryPeers: PEERS });
+    expect(r.verdict).toBe("provenance-found");
+    expect(r.gateway).toBe("https://peer.example");
+    expect(r.gatewaysQueried).toEqual([GATEWAY, "https://peer.example"]);
+    expect(r.registryPeersUsed).toEqual(["https://peer.example"]);
+  });
+
+  it("extends an all-empty chain (no-match → found on a peer)", async () => {
+    stubHostFetch({ configured: "empty", peerHasIt: true });
+    const r = await checkProvenanceForHash(REGISTERED_HASH, [GATEWAY], { registryPeers: PEERS });
+    expect(r.verdict).toBe("provenance-found");
+    expect(r.gateway).toBe("https://peer.example");
+  });
+
+  it("upgrades error to an honest no-match when a peer is reachable but empty", async () => {
+    stubHostFetch({ configured: "fail", peerHasIt: false });
+    const r = await checkProvenanceForHash(REGISTERED_HASH, [GATEWAY], { registryPeers: PEERS });
+    expect(r.verdict).toBe("no-match");
+    expect(r.gateway).toBe("https://peer.example");
+  });
+
+  it("keeps the original error when the peers also fail", async () => {
+    stubHostFetch({ configured: "fail", peerFails: true });
+    const r = await checkProvenanceForHash(REGISTERED_HASH, [GATEWAY], { registryPeers: PEERS });
+    expect(r.verdict).toBe("error");
+    expect(r.registryPeersUsed).toEqual(["https://peer.example"]);
+  });
+
+  it("keeps the original outcome when peer discovery itself fails", async () => {
+    stubHostFetch({ configured: "fail" });
+    const r = await checkProvenanceForHash(REGISTERED_HASH, [GATEWAY], {
+      registryPeers: () => Promise.reject(new Error("registry down")),
+    });
+    expect(r.verdict).toBe("error");
+    expect(r.registryPeersUsed).toBeUndefined();
+  });
+
+  it("never consults the registry when the configured chain finds the bytes", async () => {
+    stubFetch({ hashEdges: [{ id: "TX_REG" }], assetEdges: [], envelopes: { TX_REG: registered } });
+    const peersFn = vi.fn(PEERS);
+    const r = await checkProvenanceForHash(REGISTERED_HASH, [GATEWAY], { registryPeers: peersFn });
+    expect(r.verdict).toBe("provenance-found");
+    expect(peersFn).not.toHaveBeenCalled();
+    expect(r.registryPeersUsed).toBeUndefined();
+  });
+});
+
 // Continuity is the riskiest logic (a false "broken chain" would imply tampering
 // where there is none), so test it directly and conservatively.
 describe("assessContinuity", () => {
