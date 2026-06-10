@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { MAX_FILE_BYTES, WARN_FILE_BYTES, fileSizeAdvisory, formatBytes } from "../src/hash";
+import { WARN_FILE_BYTES, fileSizeAdvisory, formatBytes } from "../src/hash";
 
 describe("formatBytes", () => {
   it("renders human-readable sizes", () => {
@@ -11,16 +11,16 @@ describe("formatBytes", () => {
   });
 });
 
-describe("fileSizeAdvisory (B11)", () => {
+// The size guard's character changed with streaming (B11 superseded): from
+// "refuse past 2 GB" to "advise honestly about time, refuse nothing". The
+// streaming behavior itself is covered in hash.streaming.test.ts.
+describe("fileSizeAdvisory", () => {
   it("ok for small files", () => {
     expect(fileSizeAdvisory(1024).level).toBe("ok");
   });
-  it("warns past the warn threshold", () => {
-    expect(fileSizeAdvisory(WARN_FILE_BYTES + 1).level).toBe("warn");
-  });
-  it("refuses past the hard cap (avoids the OOM crash)", () => {
-    const a = fileSizeAdvisory(MAX_FILE_BYTES + 1);
-    expect(a.level).toBe("refuse");
-    expect(a.message).toMatch(/can't be hashed in the browser yet/);
+  it("warns honestly about time past the threshold", () => {
+    const a = fileSizeAdvisory(WARN_FILE_BYTES + 1);
+    expect(a.level).toBe("warn");
+    expect(a.message).toMatch(/hashing locally/);
   });
 });

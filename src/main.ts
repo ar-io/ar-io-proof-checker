@@ -4,7 +4,7 @@
 
 import { checkProvenance } from "./provenance";
 import { DEFAULT_GATEWAYS, normalizeGateways } from "./gateway";
-import { fileSizeAdvisory } from "./hash";
+import { fileSizeAdvisory, formatBytes } from "./hash";
 import { renderReport, renderReimport } from "./render";
 import { REPORT_SPEC, verifyReport, type ProofCheckReport } from "./report";
 import "./styles.css";
@@ -86,16 +86,20 @@ async function run(file: File): Promise<void> {
     return;
   }
 
-  // Size guard before we read the whole file into memory (B11).
+  // No file is refused on size — hashing streams with flat memory (the old
+  // 2 GB refusal guarded the arrayBuffer() OOM that streaming removed). For
+  // big files, set time expectations honestly before starting.
   const advisory = fileSizeAdvisory(file.size);
-  if (advisory.level === "refuse") {
-    show(explain(advisory.message));
-    return;
-  }
 
-  show(loading(file.name, advisory.level === "warn" ? advisory.message : undefined));
+  const progress = loadingWithProgress(
+    file.name,
+    advisory.level === "warn" ? advisory.message : undefined,
+  );
+  show(progress.box);
   try {
-    const report = await checkProvenance(file, gateways);
+    const report = await checkProvenance(file, gateways, (done, total) => {
+      if (token === activeRun) progress.update(done, total);
+    });
     if (token === activeRun) show(renderReport(report));
   } catch (e) {
     // checkProvenance handles its own errors into a report; this only fires on
@@ -119,9 +123,41 @@ function explain(text: string): HTMLElement {
   return box;
 }
 
-function loading(filename: string, warning?: string): HTMLElement {
-  const base = `Hashing "${filename}" in your browser and querying the gateway…`;
-  return loadingMsg(warning ? `${warning}\n${base}` : base);
+// Loading box with a live progress line. A multi-GB hash takes minutes;
+// without visible progress it reads as a hang, with it it reads as the tool
+// doing exactly what was asked. DOM writes are throttled.
+function loadingWithProgress(
+  filename: string,
+  warning?: string,
+): { box: HTMLElement; update: (done: number, total: number) => void } {
+  const base = `Hashing "${filename}" in your browser — no upload, the bytes never leave this page…`;
+  const box = document.createElement("div");
+  box.className = "loading";
+  const text = document.createElement("p");
+  text.textContent = warning ? `${warning}\n${base}` : base;
+  const prog = document.createElement("p");
+  prog.className = "muted";
+  box.append(text, prog);
+
+  const startedAt = Date.now();
+  let lastPaint = 0;
+  return {
+    box,
+    update(done: number, total: number) {
+      if (total > 0 && done >= total) {
+        text.textContent = "Hash complete — querying gateways…";
+        prog.textContent = "";
+        return;
+      }
+      const now = Date.now();
+      if (now - lastPaint < 100) return;
+      lastPaint = now;
+      const pct = total > 0 ? Math.floor((done / total) * 100) : 0;
+      const elapsed = (now - startedAt) / 1000;
+      const rate = elapsed > 0.5 ? `${formatBytes(done / elapsed)}/s — ` : "";
+      prog.textContent = `Hashed ${formatBytes(done)} of ${formatBytes(total)} (${pct}%) — ${rate}locally, nothing uploaded`;
+    },
+  };
 }
 
 function loadingMsg(message: string): HTMLElement {
