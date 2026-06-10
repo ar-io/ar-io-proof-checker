@@ -17,5 +17,5 @@
     "verbatimModuleSyntax": false,
     "types": ["vitest/globals", "node"]
   },
-  "include": ["src", "test"]
+  "include": ["src", "test", "packages/proof/src", "packages/proof/test"]
 }

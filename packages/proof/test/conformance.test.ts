@@ -25,7 +25,9 @@ interface Vector {
   };
 }
 
-const vectorsDir = fileURLToPath(new URL("../test-vectors/", import.meta.url));
+// Temporarily reads the repo-root corpus copy; the package vendors the full
+// test-vectors-v1.0 corpus (with per-file SHA gating) in the next commit.
+const vectorsDir = fileURLToPath(new URL("../../../test-vectors/", import.meta.url));
 
 function loadVectors(): Vector[] {
   return readdirSync(vectorsDir)
