@@ -1,4 +1,4 @@
-# @ar-io/proof
+# @ar.io/proof
 
 > TypeScript kernel of the ar.io verification stack — verify a Verifiable Event
 > Envelope with no ar.io service in the trust path.

@@ -8,11 +8,11 @@
 // Invariant #1 holds: the ~3.5 MB binary (~1 MB compressed) ships as one of
 // this app's OWN assets and is fetched only on first use — the base bundle
 // stays light and no external request is ever made. The JS verifier
-// (@ar-io/proof) remains the default and the headline; this is the
+// (@ar.io/proof) remains the default and the headline; this is the
 // belt-and-suspenders cross-check, gated for agreement with the JS verdicts
 // in test/wasm-agreement.test.ts.
 
-import { contentHashes, type ContentRole, type Envelope, type VerificationResult } from "@ar-io/proof";
+import { contentHashes, type ContentRole, type Envelope, type VerificationResult } from "@ar.io/proof";
 
 import wasmUrl from "./wasm/ario-proof.wasm?url";
 
@@ -68,7 +68,7 @@ async function instantiate(bytes?: BufferSource): Promise<GoApi> {
   throw new Error("Go verifier did not initialize");
 }
 
-// Same shape as @ar-io/proof's verifyEnvelope. The Go kernel is fail-fast
+// Same shape as @ar.io/proof's verifyEnvelope. The Go kernel is fail-fast
 // (one error, no granular booleans), so per-check flags are classified from
 // the error text — fail-closed: checks the kernel never reached are false.
 export async function verifyEnvelopeWasm(

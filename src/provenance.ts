@@ -18,7 +18,7 @@ import type {
   Envelope,
   VerificationResult,
 } from "./types";
-import { verifyEnvelope } from "@ar-io/proof";
+import { verifyEnvelope } from "@ar.io/proof";
 
 export interface Match {
   txId: string;

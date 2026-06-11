@@ -47,9 +47,9 @@ AGENT_SRC=../ar-io-agent bash scripts/build-wasm.sh    # reproducible build at t
 
 ## Architecture
 
-The flow is: **file → hash → discover → fetch → verify → history → render**, with report export/import bolted onto the result. The verification kernel lives in the **`@ar-io/proof` npm workspace package** (`packages/proof/` — v1.2 Lane H); the app consumes it as a workspace dependency.
+The flow is: **file → hash → discover → fetch → verify → history → render**, with report export/import bolted onto the result. The verification kernel lives in the **`@ar.io/proof` npm workspace package** (`packages/proof/` — v1.2 Lane H); the app consumes it as a workspace dependency.
 
-### `packages/proof/` — the `@ar-io/proof` kernel (MIT, publishable; NOT yet published)
+### `packages/proof/` — the `@ar.io/proof` kernel (MIT, publishable; NOT yet published)
 
 | Module | Role |
 |---|---|
@@ -66,7 +66,7 @@ Workspace consumption resolves the package's TS source via its `exports` map; `n
 
 `src/wasm/ario-proof.wasm` is a **reproducible build of ar-io-agent's `pkg/proof`** — the same kernel `ariod verify` runs — at the agent commit pinned in `wasm/PIN` (commit + Go version + build flags + binary SHA-256; the agreement gate re-verifies the digest every test run). `wasm/main.go` is the thin `syscall/js` bridge; `scripts/build-wasm.sh` rebuilds it via a detached git worktree of the sibling agent checkout (shared-checkout discipline: the agent repo is read/build-only, never disturbed). `src/wasm/wasm_exec.js` is the Go runtime shim vendored from the exact toolchain that built the binary.
 
-`src/verifier-wasm.ts` is the lazy adapter: same `verifyEnvelope` shape as `@ar-io/proof`, crypto exclusively inside the WASM, per-check booleans classified fail-closed from the kernel's fail-fast error, content bind computed adapter-side (field comparison, not crypto). **The JS verifier remains the default and the headline** — the toggle is cross-implementation confirmation, never a replacement, and its failure to load never blocks a verdict. Invariant #1 holds: the ~3.5 MB binary (~1 MB gz) is fetched on first use only, from the app's OWN assets (it ships in `dist/`); the adapter + shim are code-split lazy chunks, so the base bundle stays ~23 KB gz.
+`src/verifier-wasm.ts` is the lazy adapter: same `verifyEnvelope` shape as `@ar.io/proof`, crypto exclusively inside the WASM, per-check booleans classified fail-closed from the kernel's fail-fast error, content bind computed adapter-side (field comparison, not crypto). **The JS verifier remains the default and the headline** — the toggle is cross-implementation confirmation, never a replacement, and its failure to load never blocks a verdict. Invariant #1 holds: the ~3.5 MB binary (~1 MB gz) is fetched on first use only, from the app's OWN assets (it ships in `dist/`); the adapter + shim are code-split lazy chunks, so the base bundle stays ~23 KB gz.
 
 **The agreement gate** (`test/wasm-agreement.test.ts`) asserts the JS and WASM verifiers return IDENTICAL verdicts across the full corpus AND the adversarial negatives — including co-signed envelopes, with **no exceptions** (the pin includes the agent#12 `co_signatures` fix). A disagreement is cross-implementation drift = build failure. When re-pinning: bump `wasm/PIN`'s `agent_commit`, run `scripts/build-wasm.sh`, commit binary + PIN together.
 
@@ -80,7 +80,7 @@ Workspace consumption resolves the package's TS source via its `exports` map; `n
 | `report.ts` | Exportable, **self-verifiable** `ario.proof-checker.report/v1`. `buildReport` embeds the raw verified envelopes + hash; `verifyReport` re-runs verification against that embedded evidence with no network (round-trip); `reportToJson` / `reportToHtml` (HTML-escaped — reports can embed attacker-chosen strings). Unsigned by design (we have no key); integrity = re-verification. |
 | `render.ts` | All DOM. **Always `textContent`, never `innerHTML`** — envelope fields are untrusted. Verdict banner + honest copy, per-asset timeline, multi-match grouping, report action bar, and the re-import verification view. |
 | `main.ts` | Wires drop zone / file input / gateway field / report re-import. |
-| `types.ts` | Checker-specific types (`AssetEvent`, `AssetHistory`, `ChainContinuity`); re-exports the kernel types (`Envelope`, `VerificationResult`, …) from `@ar-io/proof` so app modules keep one import home. |
+| `types.ts` | Checker-specific types (`AssetEvent`, `AssetHistory`, `ChainContinuity`); re-exports the kernel types (`Envelope`, `VerificationResult`, …) from `@ar.io/proof` so app modules keep one import home. |
 
 `test/` mirrors the app layer: `gateway.test.ts` (list normalization, fetch timeout, per-gateway allSettled resilience, multi-gateway fallback incl. empty-fallthrough and view atomicity, serving-gateway derivation, registry-peers parsing), `provenance.test.ts` (orchestration, continuity, candidate cap, tie-break, registry-extension semantics — stubbed fetch), `report.test.ts` (schema, caps, round-trip self-verification incl. no-match + malformed-embedded, HTML-escaping), `hash.test.ts` (advisory copy), `hash.streaming.test.ts` (the WebCrypto cross-check across sizes incl. the SHA-256 block boundary, a stream-only Blob double proving the file is never materialized, monotonic progress). UI-layer tests use **happy-dom** via a `// @vitest-environment happy-dom` directive: `render.dom.test.ts` (verdict attribution, missing-subject guard, truncation note, multi-gateway surfacing, error verdict, popup→download fallback) and `main.dom.test.ts` (run-token race guard, input reset, keyboard activation). Kernel tests live in `packages/proof/test/` (see above).
 

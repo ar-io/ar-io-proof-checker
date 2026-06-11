@@ -8,7 +8,7 @@
 
 import { verdictFromRoles, type Match, type ProvenanceReport, type Verdict } from "./provenance";
 import type { ChainContinuity, ContentRole, Envelope } from "./types";
-import { verifyEnvelope } from "@ar-io/proof";
+import { verifyEnvelope } from "@ar.io/proof";
 
 export const REPORT_SPEC = "ario.proof-checker.report/v1" as const;
 // Keep in sync with package.json. Surfaced in the report so an auditor knows

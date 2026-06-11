@@ -95,7 +95,7 @@ Depends on [`ar-io-agent`](../ar-io-agent) **for specification only — no code 
   (`docs/artifact.md` §11), introduced for exactly this tool.
 
 The verifier here is an **independent implementation** of the same algorithm,
-packaged as the [`@ar-io/proof`](packages/proof/) npm workspace (the TypeScript
+packaged as the [`@ar.io/proof`](packages/proof/) npm workspace (the TypeScript
 sibling of the Python [`ar-io-proof`](https://github.com/ar-io/ar-io-proof) kernel;
 MIT; not yet published). That is deliberate: a second, conformance-tested
 implementation is what demonstrates the product's core claim — auditor-independent

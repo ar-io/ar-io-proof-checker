@@ -1,4 +1,4 @@
-// @ar-io/proof — TypeScript kernel of the ar.io verification stack.
+// @ar.io/proof — TypeScript kernel of the ar.io verification stack.
 //
 // The verification primitives for the Verifiable Event Envelope family
 // (ar-io-agent docs/envelope-spec.md), ario.agent/v1 profile: RFC 8785 (JCS)

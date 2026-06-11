@@ -1,4 +1,4 @@
-// The JS↔WASM agreement gate (Lane H Phase 2): the @ar-io/proof JS verifier
+// The JS↔WASM agreement gate (Lane H Phase 2): the @ar.io/proof JS verifier
 // and the WASM build of the Go reference kernel (ar-io-agent pkg/proof at the
 // commit pinned in wasm/PIN) must return IDENTICAL verdicts across the full
 // conformance corpus AND the adversarial negatives — including co-signed
@@ -15,7 +15,7 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
-import { verifyEnvelope, type Envelope } from "@ar-io/proof";
+import { verifyEnvelope, type Envelope } from "@ar.io/proof";
 import { loadGoVerifier, verifyEnvelopeWasm } from "../src/verifier-wasm";
 
 const wasmPath = fileURLToPath(new URL("../src/wasm/ario-proof.wasm", import.meta.url));
