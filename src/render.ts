@@ -69,21 +69,22 @@ const ROLE_TONE: Record<ContentRole, string> = {
 
 export function renderReport(report: ProvenanceReport, onRetry?: () => void): HTMLElement {
   const root = el("section", "report");
-
-  // Verdict banner
   const meta = VERDICT_COPY[report.verdict];
-  const banner = el("div", `verdict verdict-${meta.tone}`);
-  banner.appendChild(VERDICT_ICON[report.verdict]());
-  banner.appendChild(el("span", "verdict-title", meta.title));
-  root.appendChild(banner);
 
-  // Summary metadata — keep it tight, details in the exported report
-  const summary = el("div", "summary-card");
-  summary.appendChild(kv("File hash (SHA-256)", report.fileHash, "mono"));
-  root.appendChild(summary);
+  // Single result card — verdict header, metadata, findings, actions
+  const card = el("div", `result-card result-card-${meta.tone}`);
+
+  // Card header: verdict
+  const header = el("div", "result-header");
+  header.appendChild(VERDICT_ICON[report.verdict]());
+  header.appendChild(el("span", "verdict-title", meta.title));
+  card.appendChild(header);
+
+  // File hash
+  card.appendChild(kv("File hash (SHA-256)", report.fileHash, "mono"));
 
   if (report.candidatesTruncated) {
-    root.appendChild(
+    card.appendChild(
       el(
         "p",
         "muted",
@@ -92,38 +93,44 @@ export function renderReport(report: ProvenanceReport, onRetry?: () => void): HT
     );
   }
 
-  // Findings
+  // Findings body
   switch (report.verdict) {
     case "provenance-found":
     case "tampered-bytes":
       if (report.histories.length > 0) {
         if (report.histories.length > 1) {
-          root.appendChild(
+          card.appendChild(
             el(
               "p",
               "muted",
-              `Matched ${report.histories.length} assets (grouped by tenant / agent, newest first):`,
+              `Matched ${report.histories.length} assets (newest first):`,
             ),
           );
         }
-        for (const h of report.histories) root.appendChild(renderHistory(h, report.gateway));
+        for (const h of report.histories) card.appendChild(renderHistory(h, report.gateway));
       } else {
-        for (const m of report.matches) root.appendChild(renderBareMatch(m, report.gateway));
+        for (const m of report.matches) card.appendChild(renderBareMatch(m, report.gateway));
       }
-      root.appendChild(disclaimer(report));
       break;
     case "no-match":
-      root.appendChild(noMatchCopy(report));
+      card.appendChild(noMatchCopy(report));
       break;
     case "error":
-      root.appendChild(errorCopy(report.error ?? "unknown error", onRetry));
+      card.appendChild(errorCopy(report.error ?? "unknown error", onRetry));
       break;
   }
 
-  if (report.rejected.length > 0) root.appendChild(renderRejected(report));
+  if (report.rejected.length > 0) card.appendChild(renderRejected(report));
 
-  // Export actions — after findings so auditors review then export
-  if (report.verdict !== "error") root.appendChild(renderActions(report));
+  // Card footer: export actions
+  if (report.verdict !== "error") card.appendChild(renderActions(report));
+
+  root.appendChild(card);
+
+  // Disclaimer sits outside the card — it's a scope caveat, not a finding
+  if (report.verdict === "provenance-found" || report.verdict === "tampered-bytes") {
+    root.appendChild(disclaimer(report));
+  }
 
   return root;
 }
