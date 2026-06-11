@@ -19,7 +19,8 @@ const panelCheck = byId("panel-check");
 const panelVerify = byId("panel-verify");
 const dropzone = byId("dropzone");
 const fileInput = byId<HTMLInputElement>("file-input");
-const gatewayInput = byId<HTMLInputElement>("gateway");
+const graphqlGatewayInput = byId<HTMLInputElement>("graphql-gateway");
+const dataGatewayInput = byId<HTMLInputElement>("data-gateway");
 const reportInput = byId<HTMLInputElement>("report-input");
 const results = byId("results");
 const historyContainer = byId("history");
@@ -29,8 +30,10 @@ const historyContainer = byId("history");
 // delivered this page, so it's up and CORS-reachable. On localhost or a
 // non-gateway host this is a no-op and the static anchors stand alone.
 const DEFAULT_CHAIN = defaultGatewayChain(window.location.hostname);
-gatewayInput.value = DEFAULT_CHAIN.join(", ");
-gatewayInput.placeholder = DEFAULT_CHAIN.join(", ");
+graphqlGatewayInput.value = DEFAULT_CHAIN.join(", ");
+graphqlGatewayInput.placeholder = DEFAULT_CHAIN.join(", ");
+dataGatewayInput.value = DEFAULT_CHAIN.join(", ");
+dataGatewayInput.placeholder = DEFAULT_CHAIN.join(", ");
 
 // --- tab toggle (R1) ---------------------------------------------------------
 
@@ -131,14 +134,22 @@ async function runReport(file: File): Promise<void> {
 async function run(file: File): Promise<void> {
   const token = ++activeRun;
 
-  // Each gateway must be a valid http(s) URL (B10); comma-separated list,
-  // tried in order with fallback. Same list used for both search and data.
-  let gateways: string[];
+  // Each gateway must be a valid http(s) URL (B10); comma-separated lists,
+  // tried in order with fallback.
+  let graphqlGateways: string[];
+  let dataGateways: string[];
   try {
-    gateways = normalizeGateways(gatewayInput.value);
-    gatewayInput.value = gateways.join(", ");
+    graphqlGateways = normalizeGateways(graphqlGatewayInput.value);
+    graphqlGatewayInput.value = graphqlGateways.join(", ");
   } catch (e) {
-    show(explain(`Invalid gateway: ${msg(e)}`));
+    show(explain(`Invalid query gateway: ${msg(e)}`));
+    return;
+  }
+  try {
+    dataGateways = normalizeGateways(dataGatewayInput.value);
+    dataGatewayInput.value = dataGateways.join(", ");
+  } catch (e) {
+    show(explain(`Invalid data gateway: ${msg(e)}`));
     return;
   }
 
@@ -154,17 +165,19 @@ async function run(file: File): Promise<void> {
   show(progress.box);
   try {
     // Registry-driven fallback discovery only applies to the untouched default
-    // chain — a user-typed list is respected strictly (their gateways, no
+    // chains — a user-typed list is respected strictly (their gateways, no
     // silent additions).
-    const isDefaultChain = gateways.join(", ") === DEFAULT_CHAIN.join(", ");
+    const isDefaultChain =
+      graphqlGateways.join(", ") === DEFAULT_CHAIN.join(", ") &&
+      dataGateways.join(", ") === DEFAULT_CHAIN.join(", ");
     const report = await checkProvenance(
       file,
-      gateways,
-      gateways,
+      graphqlGateways,
+      dataGateways,
       (done, total) => {
         if (token === activeRun) progress.update(done, total);
       },
-      isDefaultChain ? { registryPeers: () => fetchRegistryPeers(gateways) } : undefined,
+      isDefaultChain ? { registryPeers: () => fetchRegistryPeers(dataGateways) } : undefined,
     );
     if (token === activeRun) {
       const retry = () => void run(file);

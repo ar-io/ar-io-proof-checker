@@ -54,7 +54,8 @@ beforeAll(async () => {
     <div id="panel-check" class="panel" role="tabpanel">
       <div id="dropzone" tabindex="0" role="button"></div>
       <input id="file-input" type="file" />
-      <input id="gateway" type="text" />
+      <input id="graphql-gateway" type="text" />
+      <input id="data-gateway" type="text" />
     </div>
     <div id="panel-verify" class="panel" role="tabpanel" hidden>
       <input id="report-input" type="file" />
