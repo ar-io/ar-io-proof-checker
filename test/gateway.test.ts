@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   DEFAULT_GATEWAYS,
+  MAX_RESPONSE_BYTES,
   REGISTRY_PEER_LIMIT,
   defaultGatewayChain,
   fetchEnvelope,
@@ -141,6 +142,66 @@ describe("fetchRegistryPeers", () => {
   it("returns [] when no gateway serves a list (best-effort, never throws)", async () => {
     stubPeersFetch({});
     expect(await fetchRegistryPeers(["https://gw1.example", "https://gw2.example"])).toEqual([]);
+  });
+});
+
+describe("response-size cap (hostile/broken gateway DoS guard)", () => {
+  // A body that streams `chunks` of `chunkSize` bytes, optionally declaring a
+  // Content-Length. Models a gateway trying to OOM the tab.
+  function hugeBodyResponse(opts: { declared?: number; chunks: number; chunkSize: number }): Response {
+    let emitted = 0;
+    const stream = new ReadableStream({
+      pull(controller) {
+        if (emitted >= opts.chunks) {
+          controller.close();
+          return;
+        }
+        emitted++;
+        controller.enqueue(new Uint8Array(opts.chunkSize));
+      },
+    });
+    const headers = new Headers({ "content-type": "application/json" });
+    if (opts.declared !== undefined) headers.set("content-length", String(opts.declared));
+    return new Response(stream, { status: 200, headers });
+  }
+
+  it("rejects early on a declared-too-large Content-Length", async () => {
+    vi.stubGlobal("fetch", async () =>
+      hugeBodyResponse({ declared: MAX_RESPONSE_BYTES + 1, chunks: 1, chunkSize: 8 }),
+    );
+    await expect(fetchEnvelope(["https://gw.example"], "TX")).rejects.toThrow(/too large/);
+  });
+
+  it("aborts mid-stream when no Content-Length is declared but the body blows past the cap", async () => {
+    // 1 MB chunks; would be ~64 MB if uncapped. The reader must abort past 16 MB.
+    let pulled = 0;
+    vi.stubGlobal("fetch", async () => {
+      const stream = new ReadableStream({
+        pull(controller) {
+          pulled++;
+          if (pulled > 64) {
+            controller.close();
+            return;
+          }
+          controller.enqueue(new Uint8Array(1024 * 1024));
+        },
+      });
+      return new Response(stream, { status: 200, headers: { "content-type": "application/json" } });
+    });
+    await expect(fetchEnvelope(["https://gw.example"], "TX")).rejects.toThrow(/cap/);
+    // Proves we stopped reading instead of draining all 64 MB.
+    expect(pulled).toBeLessThan(40);
+  });
+
+  it("passes a normal small body through unharmed", async () => {
+    vi.stubGlobal("fetch", async () =>
+      new Response(JSON.stringify({ event_type: "asset_registered" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+    const env = await fetchEnvelope(["https://gw.example"], "TX");
+    expect(env.event_type).toBe("asset_registered");
   });
 });
 

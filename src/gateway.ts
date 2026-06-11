@@ -32,6 +32,16 @@ export const REGISTRY_PEER_LIMIT = 4;
 // worst case grows with the gateway list; lists are short (2–3 entries).
 export const FETCH_TIMEOUT_MS = 20_000;
 
+// Hard cap on any gateway response body. Real envelopes are a few KB and
+// inclusion bundles ~1.4 KB; a /ar-io/peers list or a 100-edge GraphQL page is
+// well under a megabyte. 16 MB is enormous headroom for a legitimate response
+// yet stops a hostile (or broken) gateway from streaming gigabytes into
+// res.json() and OOMing the tab — a denial the threat model lets a gateway
+// attempt, but one we can cheaply refuse. Enforced two ways: an early reject on
+// a declared Content-Length, and a streaming byte counter that aborts
+// mid-body when the header is absent or lies.
+export const MAX_RESPONSE_BYTES = 16 * 1024 * 1024;
+
 // Validate + normalize ONE user-entered gateway. Accepts a bare host
 // ("turbo-gateway.com") by assuming https, rejects non-http(s) schemes (so a
 // pasted javascript:/data: URL can't flow into fetch or a link href), and
@@ -115,7 +125,7 @@ export async function fetchRegistryPeers(
     try {
       const res = await fetchWithTimeout(`${trimSlash(gw)}/ar-io/peers`);
       if (!res.ok) continue;
-      body = (await res.json()) as PeersResponse;
+      body = await readJsonBounded<PeersResponse>(res);
     } catch {
       continue;
     }
@@ -157,6 +167,46 @@ async function fetchWithTimeout(
   }
 }
 
+// Parse a gateway response as JSON under a hard byte cap (MAX_RESPONSE_BYTES),
+// so a hostile or broken gateway can't OOM the tab by streaming a giant body
+// into res.json(). Rejects early on a declared-too-large Content-Length, then
+// streams the body counting bytes and aborts the moment the cap is crossed —
+// catching the case where the header is absent or lies. Falls back to a plain
+// res.json() only when the body isn't a readable stream (older runtimes/mocks).
+async function readJsonBounded<T>(res: Response, cap: number = MAX_RESPONSE_BYTES): Promise<T> {
+  const declared = Number(res.headers.get("content-length"));
+  if (Number.isFinite(declared) && declared > cap) {
+    throw new Error(`gateway response too large: ${declared} bytes > ${cap} cap`);
+  }
+  if (!res.body || typeof res.body.getReader !== "function") {
+    return (await res.json()) as T;
+  }
+  const reader = res.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > cap) {
+        await reader.cancel();
+        throw new Error(`gateway response exceeded ${cap}-byte cap`);
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const buf = new Uint8Array(total);
+  let offset = 0;
+  for (const c of chunks) {
+    buf.set(c, offset);
+    offset += c.byteLength;
+  }
+  return JSON.parse(new TextDecoder().decode(buf)) as T;
+}
+
 // The content-hash tags the agent writes (ar-io-agent artifact.md §11). A file's
 // hash can appear as the registered/missing baseline (Asset-Hash), the tampered
 // bytes that were flagged (Observed-Hash), or the known-good bytes a tamper
@@ -194,7 +244,7 @@ async function queryByTag(gateway: string, tagName: string, hash: string): Promi
     body: JSON.stringify({ query: GRAPHQL_QUERY, variables: { name: tagName, hash } }),
   });
   if (!res.ok) throw new Error(`gateway GraphQL ${res.status} ${res.statusText}`);
-  const body = (await res.json()) as GraphQLResponse;
+  const body = await readJsonBounded<GraphQLResponse>(res);
   if (body.errors?.length) {
     throw new Error(`gateway GraphQL error: ${body.errors.map((e) => e.message).join("; ")}`);
   }
@@ -299,7 +349,7 @@ async function findAssetEventTxsOn(
     }),
   });
   if (!res.ok) throw new Error(`gateway GraphQL ${res.status} ${res.statusText}`);
-  const body = (await res.json()) as AssetEventsResponse;
+  const body = await readJsonBounded<AssetEventsResponse>(res);
   if (body.errors?.length) {
     throw new Error(`gateway GraphQL error: ${body.errors.map((e) => e.message).join("; ")}`);
   }
@@ -347,7 +397,7 @@ export async function fetchEnvelope(gateways: string[], txId: string): Promise<E
     try {
       const res = await fetchWithTimeout(`${trimSlash(gw)}/raw/${encodeURIComponent(txId)}`);
       if (!res.ok) throw new Error(`fetch /raw/${txId}: ${res.status} ${res.statusText}`);
-      return (await res.json()) as Envelope;
+      return await readJsonBounded<Envelope>(res);
     } catch (e) {
       lastError = e;
     }
