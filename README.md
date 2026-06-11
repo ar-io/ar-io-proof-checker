@@ -146,4 +146,10 @@ caveats.
 
 ## License
 
-MIT — see [LICENSE](LICENSE). Making the verifier open is the whole point.
+BSL 1.1 with an MIT carve-out for [`packages/proof/`](packages/proof) (the
+TypeScript verification kernel, publishing as `@ar.io/proof`) — see
+[LICENSE](LICENSE). Making the *verifier* open is the whole point: anyone can
+audit and ship a conformant verifier under MIT, without BSL terms touching
+their code. The BSL covers the web application around it (production use
+permitted; offering it as a hosted service to third parties requires a
+commercial license), and converts to MIT two years after each release.
