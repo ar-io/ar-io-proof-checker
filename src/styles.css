@@ -701,19 +701,19 @@ h1 {
   align-items: center;
   gap: 0.5rem;
   padding: 0.4rem 0.5rem;
-  background: var(--white);
-  border: 1px solid var(--subtle-border);
+  border: 1px solid transparent;
   border-radius: 10px;
-  margin-bottom: 0.3rem;
+  margin-bottom: 0.15rem;
   cursor: pointer;
   font-size: var(--text-sm);
-  box-shadow: var(--card-shadow);
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, background 0.15s;
 }
 
 .history-entry:hover,
 .history-entry-active {
-  border-color: var(--primary);
+  background: var(--white);
+  border-color: var(--subtle-border);
+  box-shadow: var(--card-shadow);
 }
 
 .history-verdict {
