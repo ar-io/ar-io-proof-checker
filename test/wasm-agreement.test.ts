@@ -20,7 +20,7 @@ import { loadGoVerifier, verifyEnvelopeWasm } from "../src/verifier-wasm";
 
 const wasmPath = fileURLToPath(new URL("../src/wasm/ario-proof.wasm", import.meta.url));
 const pinPath = fileURLToPath(new URL("../wasm/PIN", import.meta.url));
-const vectorsDir = fileURLToPath(new URL("../packages/proof/test-vectors/", import.meta.url));
+const vectorsDir = fileURLToPath(new URL("./fixtures/", import.meta.url));
 
 const wasmBytes = readFileSync(wasmPath);
 

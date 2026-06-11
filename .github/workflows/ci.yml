@@ -1,8 +1,8 @@
 name: ci
 
-# The conformance job is the load-bearing gate: the client-side verifier MUST
-# reproduce every ar-io-agent test vector byte-for-byte. A single mismatch fails
-# the build — same discipline as ar-io-agent's JCS / ANS-104 cross-products.
+# App-level gate. The verification kernel is the published @ar.io/proof npm
+# package (its own conformance gate lives in ar-io-proof); CI here typechecks,
+# runs the app + WASM-agreement suite, and builds the deployable bundle.
 on:
   push:
   pull_request:
@@ -17,9 +17,7 @@ jobs:
           node-version: "20"
           cache: "npm"
       - run: npm ci
-      - name: "@ar.io/proof kernel build first — exports point at dist/ since the publish commit"
-        run: npm run build:proof
       - run: npm run typecheck
-      - name: Conformance + verifier tests (vectors must match byte-for-byte)
+      - name: App + WASM-agreement tests
         run: npm run test
       - run: npm run build

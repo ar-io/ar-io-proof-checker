@@ -1,8 +1,8 @@
 // App-layer types. The envelope wire types and verification result live in the
-// @ar.io/proof kernel package (packages/proof) and are re-exported here so app
-// modules keep one import home; the types below are checker-specific (timeline
-// reconstruction and UI grouping), deliberately OUTSIDE the kernel's
-// single-envelope scope boundary.
+// @ar.io/proof kernel (the published npm package; source home ar-io-proof) and
+// are re-exported here so app modules keep one import home; the types below are
+// checker-specific (timeline reconstruction and UI grouping), deliberately
+// OUTSIDE the kernel's single-envelope scope boundary.
 
 import type { ContentRole, Envelope, VerificationResult } from "@ar.io/proof";
 
