@@ -1,0 +1,5 @@
+agent_commit=0e6379b55732093745ee8a96dd93b77fb4a5a85f
+go_version=go1.25.0
+build=GOOS=js GOARCH=wasm go build -trimpath -buildvcs=false -o ../src/wasm/ario-proof.wasm .
+wasm_sha256=e5be8c0fec9e73c2fc2ee3f6e53f34d1faeab5929a2f8a59dd4a3cda185cd091
+wasm_exec_source=go1.25.0 lib/wasm/wasm_exec.js (vendored at src/wasm/wasm_exec.js)
