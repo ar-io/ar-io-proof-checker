@@ -77,10 +77,10 @@ describe("verdict attribution (B4)", () => {
       ],
     });
     const text = renderReport(r).textContent ?? "";
-    expect(text).toContain("flagged as tampered by");
+    expect(text).toContain("was flagged as tampered by");
     expect(text).toContain("evil-co / rogue-1"); // attribution
-    expect(text).toContain("also appear as known-good"); // doesn't hide the clean record
-    expect(text).toContain("anyone can anchor a record referencing any hash");
+    expect(text).toContain("also appears as known-good"); // doesn't hide the clean record
+    expect(text).toContain("Anyone can create a record for any file");
   });
 });
 
@@ -101,39 +101,12 @@ describe("missing subject is guarded (B7)", () => {
 describe("truncation note (B5)", () => {
   it("shows a note when candidatesTruncated is set", () => {
     const text = renderReport(report({ candidatesTruncated: true })).textContent ?? "";
-    expect(text).toContain("more candidates than were checked");
+    expect(text).toContain("More records were found");
   });
 });
 
-describe("multi-gateway surfacing", () => {
-  it("shows both gateway chains in the summary", () => {
-    const text =
-      renderReport(
-        report({
-          graphqlGatewaysQueried: ["https://gql.example"],
-          dataGatewaysQueried: ["https://data.example"],
-        }),
-      ).textContent ?? "";
-    expect(text).toContain("GraphQL gateways");
-    expect(text).toContain("https://gql.example");
-    expect(text).toContain("Data gateways");
-    expect(text).toContain("https://data.example");
-  });
-
-  it("discloses registry-discovered fallback gateways when they were queried", () => {
-    const text =
-      renderReport(
-        report({
-          graphqlGatewaysQueried: ["https://gw1.example", "https://peer.example"],
-          dataGatewaysQueried: ["https://gw1.example", "https://peer.example"],
-          registryPeersUsed: ["https://peer.example"],
-        }),
-      ).textContent ?? "";
-    expect(text).toContain("discovered from the ar.io registry");
-    expect(text).toContain("verified in your browser");
-  });
-
-  it("no-match copy reflects that every configured gateway was asked", () => {
+describe("no-match copy", () => {
+  it("explains that absence is not evidence of tampering", () => {
     const text =
       renderReport(
         report({
@@ -141,8 +114,8 @@ describe("multi-gateway surfacing", () => {
           dataGatewaysQueried: ["https://gw1.example", "https://gw2.example"],
         }),
       ).textContent ?? "";
-    expect(text).toContain("any of the 2 queried gateways");
-    expect(text).toContain("not proof of tampering");
+    expect(text).toContain("No provenance record was found");
+    expect(text).toContain("does not mean the file has been tampered");
   });
 });
 
@@ -152,9 +125,9 @@ describe("error verdict", () => {
       renderReport(
         report({ verdict: "error", error: "all 2 gateway(s) failed: …" }),
       ).textContent ?? "";
-    expect(text).toContain("verdict is unknown");
+    expect(text).toContain("result is unknown");
     expect(text).toContain("all 2 gateway(s) failed");
-    expect(text).toContain("Every configured gateway failed");
+    expect(text).toContain("All gateways failed");
   });
 });
 

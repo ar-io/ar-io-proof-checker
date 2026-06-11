@@ -3,20 +3,21 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ar.io proof checker — does this file have a verifiable history?</title>
+    <title>ar.io Proof Checker</title>
     <meta
       name="description"
-      content="Drop a file in. It's hashed in your browser (never uploaded) and checked for a signed ar.io provenance record on Arweave."
+      content="Check if a file has a verified provenance record on Arweave. Everything runs in your browser — nothing is uploaded."
     />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
   </head>
   <body>
     <main class="app">
       <header>
         <div class="brand-logo" role="img" aria-label="ar.io"></div>
-        <h1>Proof checker</h1>
+        <h1>Proof Checker</h1>
         <p class="tagline">
-          Drop a file in. It is hashed <strong>in your browser</strong> — the bytes never leave
-          your machine — and checked against Arweave for a signed ar.io provenance record.
+          Check if a file has a verified provenance record on Arweave.
+          Your file is hashed <strong>in your browser</strong> and never uploaded.
         </p>
       </header>
 
@@ -28,46 +29,53 @@
       <div id="panel-check" class="panel" role="tabpanel">
         <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Choose or drop a file">
           <p class="dropzone-main">Drop a file here, or click to choose</p>
-          <p class="dropzone-sub">Nothing is uploaded. Only the file's hash is sent, inside a query.</p>
+          <p class="dropzone-sub">Nothing is uploaded. Only the file's fingerprint is sent as a search query.</p>
         </div>
         <input id="file-input" type="file" hidden />
 
         <div class="samples">
           <span class="samples-label">Try a sample:</span>
-          <button class="sample-btn sample-ok" data-sample="sample-verifiable.txt" title="Pristine registered file — expect Provenance found"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg> Verifiable</button>
-          <button class="sample-btn sample-ok" data-sample="sample-demo-original.txt" title="Registered original that was later tampered — shows multi-event timeline"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg> Original + timeline</button>
-          <button class="sample-btn sample-warn" data-sample="sample-demo-tampered.txt" title="The tampered version of the above — expect Tamper record"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg> Tampered</button>
-          <button class="sample-btn sample-none" data-sample="sample-no-provenance.txt" title="Never registered — expect No provenance found"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg> Unregistered</button>
+          <button class="sample-btn sample-ok" data-sample="sample-verifiable.txt" title="A registered file with a clean provenance record"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg> Verified</button>
+          <button class="sample-btn sample-ok" data-sample="sample-demo-original.txt" title="An original file that was later tampered — shows a multi-event timeline"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg> Original + timeline</button>
+          <button class="sample-btn sample-warn" data-sample="sample-demo-tampered.txt" title="A tampered version of the file above"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg> Tampered</button>
+          <button class="sample-btn sample-none" data-sample="sample-no-provenance.txt" title="A file with no provenance record"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg> No record</button>
         </div>
 
-        <div class="gateway-group">
-          <label class="gateway-row">
-            <span>GraphQL gateways</span>
-            <input
-              id="graphql-gateway"
-              type="text"
-              spellcheck="false"
-              autocomplete="off"
-              title="Comma-separated gateways for discovering transactions via GraphQL. Tried in order."
-            />
-          </label>
-          <label class="gateway-row">
-            <span>Data gateways</span>
-            <input
-              id="data-gateway"
-              type="text"
-              spellcheck="false"
-              autocomplete="off"
-              title="Comma-separated gateways for fetching raw envelope bytes (/raw/<txId>). Tried in order."
-            />
-          </label>
-        </div>
+        <details class="advanced">
+          <summary>Gateway settings</summary>
+          <p class="advanced-desc">
+            Gateways are the Arweave nodes this tool queries. The defaults work for most checks.
+            Change them only if you need to query a specific node.
+          </p>
+          <div class="gateway-group">
+            <label class="gateway-row">
+              <span>Search</span>
+              <input
+                id="graphql-gateway"
+                type="text"
+                spellcheck="false"
+                autocomplete="off"
+                title="Gateways used to search for provenance records. Comma-separated, tried in order."
+              />
+            </label>
+            <label class="gateway-row">
+              <span>Data</span>
+              <input
+                id="data-gateway"
+                type="text"
+                spellcheck="false"
+                autocomplete="off"
+                title="Gateways used to download the actual provenance records. Comma-separated, tried in order."
+              />
+            </label>
+          </div>
+        </details>
       </div>
 
       <div id="panel-verify" class="panel" role="tabpanel" hidden>
         <p class="panel-desc">
-          Re-check a previously downloaded JSON report against its own embedded envelopes —
-          no network, no original file needed. Confirms the report is internally consistent.
+          Re-check a previously exported report against its own embedded evidence —
+          no network needed, no original file needed.
         </p>
         <label class="file-input-wrap">
           <span class="file-input-label">Choose report file</span>
@@ -77,20 +85,33 @@
 
       <div id="results" class="results" aria-live="polite"></div>
       <div id="history" class="history-section"></div>
-
-      <footer>
-        <p>
-          This tool proves <strong>"this artifact has a verifiable history."</strong> It does
-          <strong>not</strong> prove the file is the version currently in production, nor that it
-          is safe or approved. Verification runs entirely client-side against the public key inside
-          each envelope — no ar.io service is in the trust path.
-        </p>
-        <p class="muted">
-          Open source (MIT). Reverse lookup covers events anchored on or after the ar-io-agent
-          release that introduced content-hash tagging.
-        </p>
-      </footer>
     </main>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <div class="footer-left">
+          <span class="footer-copy">&copy; 2026 ar.io</span>
+          <span class="footer-sep">&middot;</span>
+          <a href="https://github.com/ar-io/ar-io-proof-checker" target="_blank" rel="noopener noreferrer" class="footer-link">Source</a>
+          <span class="footer-sep">&middot;</span>
+          <a href="https://ar.io/legal/terms-of-service-and-privacy-policy/" target="_blank" rel="noopener noreferrer" class="footer-link">Terms &amp; Privacy</a>
+        </div>
+        <nav class="footer-social" aria-label="Social links">
+          <a href="https://x.com/ar_io_network" target="_blank" rel="noopener noreferrer" aria-label="X (Twitter)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l11.733 16h4.267l-11.733 -16h-4.267z"/><path d="M4 20l6.768 -6.768m2.46 -2.46l6.772 -6.772"/></svg>
+          </a>
+          <a href="https://www.linkedin.com/company/ar-io-network/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
+          </a>
+          <a href="https://github.com/ar-io" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+          </a>
+          <a href="https://discord.com/invite/HGG52EtTc2" target="_blank" rel="noopener noreferrer" aria-label="Discord">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12a1 1 0 1 0 2 0 1 1 0 1 0-2 0"/><path d="M14 12a1 1 0 1 0 2 0 1 1 0 1 0-2 0"/><path d="M15.5 17c0 1 1.5 3 2 3 1.5 0 2.833-1.667 3.5-3 .667-1.667.5-5.833-1.5-11.5-1.457-1.015-3-1.34-4.5-1.5l-1 2.5"/><path d="M8.5 17c0 1-1.356 3-1.832 3-1.429 0-2.698-1.667-3.333-3-.635-1.667-.476-5.833 1.428-11.5C6.151 4.485 7.545 4.16 8.96 4l.857 2.5"/></svg>
+          </a>
+        </nav>
+      </div>
+    </footer>
 
     <script type="module" src="/src/main.ts"></script>
   </body>

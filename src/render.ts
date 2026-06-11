@@ -77,32 +77,17 @@ export function renderReport(report: ProvenanceReport, onRetry?: () => void): HT
   banner.appendChild(el("span", "verdict-title", meta.title));
   root.appendChild(banner);
 
-  // Summary metadata
+  // Summary metadata — keep it tight, details in the exported report
   const summary = el("div", "summary-card");
-  summary.appendChild(kv("File SHA-256", report.fileHash, "mono"));
-  summary.appendChild(kv("GraphQL gateways", report.graphqlGatewaysQueried.join(", ")));
-  summary.appendChild(kv("Data gateways", report.dataGatewaysQueried.join(", ")));
+  summary.appendChild(kv("File hash (SHA-256)", report.fileHash, "mono"));
   root.appendChild(summary);
-
-  if (report.registryPeersUsed?.length) {
-    root.appendChild(
-      el(
-        "p",
-        "muted",
-        `The configured gateways were exhausted, so ${report.registryPeersUsed.length} fallback ` +
-          "gateway(s) discovered from the ar.io registry were also queried. " +
-          "Discovered gateways are search hints only — every envelope is verified in your browser.",
-      ),
-    );
-  }
 
   if (report.candidatesTruncated) {
     root.appendChild(
       el(
         "p",
         "muted",
-        `The gateway returned more candidates than were checked; only the first ${MAX_CANDIDATES} were verified. ` +
-          "Narrow the lookup or try another gateway for completeness.",
+        `More records were found than could be checked — only the first ${MAX_CANDIDATES} were verified.`,
       ),
     );
   }
@@ -308,7 +293,7 @@ export function renderReimport(report: ProofCheckReport, v: ReportVerification):
     el(
       "div",
       "disclaimer",
-      "Re-verification ran the signature, payload-hash, and content checks on the report's embedded envelopes locally — no gateway, no network. It confirms the report is internally consistent, not that the bytes are the live production version.",
+      "This re-verification ran entirely in your browser against the evidence embedded in the report — no network required. It confirms the report is internally consistent.",
     ),
   );
   return root;
@@ -331,7 +316,7 @@ function renderHistory(h: AssetHistory, gateway: string): HTMLElement {
 
   const head = el("div", "match-head");
   head.appendChild(el("span", "asset-id", h.assetId));
-  head.appendChild(el("span", "match-meta", `Tenant ${h.tenantId} · Agent ${h.agentId}`));
+  head.appendChild(el("span", "match-meta", `${h.tenantId} · ${h.agentId}`));
   card.appendChild(head);
 
   const cont = el("div", h.continuity === "linked" ? "continuity continuity-linked" : "continuity");
@@ -401,7 +386,7 @@ function renderBareMatch(m: Match, gateway: string): HTMLElement {
   const p = m.envelope;
   const head = el("div", "match-head");
   head.appendChild(el("span", "event-label", humanEventType(p.event_type)));
-  head.appendChild(el("span", "match-meta", `Tenant ${signerTenant(m)} · Agent ${signerAgent(m)}`));
+  head.appendChild(el("span", "match-meta", `${signerTenant(m)} · ${signerAgent(m)}`));
   card.appendChild(head);
   card.appendChild(kv("Signing key", p.public_key, "mono"));
   card.appendChild(kv("Signed at", `${p.signed_at} (advisory)`));
@@ -425,20 +410,18 @@ function disclaimer(report: ProvenanceReport): HTMLElement {
     const flaggedBy = uniqueSigners(report.matches.filter((m) => m.role === "observed"));
     const alsoKnownGood = report.matches.some((m) => m.role !== "observed");
     box.textContent =
-      `These exact bytes were flagged as tampered by ${flaggedBy}. That is a claim by ` +
-      "that signer — anyone can anchor a record referencing any hash, so confirm you recognize " +
-      "the signing key before trusting it. " +
+      `This file was flagged as tampered by ${flaggedBy}. ` +
+      "Anyone can create a record for any file, so verify you recognize the signing key before acting on this. " +
       (alsoKnownGood
-        ? "Note: these same bytes also appear as known-good content in another record above. "
+        ? "Note: this file also appears as known-good content in another record above. "
         : "") +
       "This does not indicate whether this copy is the version running in production.";
     return box;
   }
   const box = el("div", "disclaimer");
   box.textContent =
-    "This confirms the artifact's on-chain history. It does not confirm this " +
-    "copy is the version currently deployed in production, and it is not a " +
-    "statement that the file is safe or approved.";
+    "This confirms the file has an on-chain history. It does not confirm this " +
+    "is the version currently deployed in production, nor that the file is safe or approved.";
   return box;
 }
 
@@ -457,19 +440,16 @@ function uniqueSigners(matches: Match[]): string {
   return [...set].join(", ") || "an agent";
 }
 
-function noMatchCopy(report: ProvenanceReport): HTMLElement {
-  const all = new Set([...report.graphqlGatewaysQueried, ...report.dataGatewaysQueried]);
-  const n = all.size;
-  const where = n > 1 ? `any of the ${n} queried gateways` : "the queried gateway";
+function noMatchCopy(_report: ProvenanceReport): HTMLElement {
   const box = el("div", "explain");
   box.appendChild(
-    el("p", "", `These bytes have no ar.io provenance record on ${where}. This is not proof of tampering.`),
+    el("p", "", "No provenance record was found for this file. This does not mean the file has been tampered with."),
   );
   const ul = el("ul", "");
   for (const reason of [
-    "They were never registered.",
-    "They were registered by an agent predating content-hash tagging.",
-    `The ${n > 1 ? "gateways haven't" : "gateway hasn't"} indexed the transaction yet — try again shortly.`,
+    "The file was never registered.",
+    "It was registered before content-hash tagging was available.",
+    "The record hasn't been indexed yet — try again in a few minutes.",
   ]) {
     ul.appendChild(el("li", "", reason));
   }
@@ -479,8 +459,8 @@ function noMatchCopy(report: ProvenanceReport): HTMLElement {
 
 function errorCopy(message: string, onRetry?: () => void): HTMLElement {
   const box = el("div", "explain");
-  box.appendChild(el("p", "", "The lookup could not complete, so the verdict is unknown."));
-  box.appendChild(kv("Detail", message, "mono"));
+  box.appendChild(el("p", "", "The check could not complete. The result is unknown."));
+  box.appendChild(kv("Error", message, "mono"));
   if (onRetry) {
     const row = el("div", "error-actions");
     const btn = document.createElement("button");
@@ -488,11 +468,11 @@ function errorCopy(message: string, onRetry?: () => void): HTMLElement {
     btn.textContent = "Retry";
     btn.addEventListener("click", onRetry);
     row.appendChild(btn);
-    row.appendChild(el("span", "muted", "or point the tool at different gateways."));
+    row.appendChild(el("span", "muted", "or adjust gateway settings and try again."));
     box.appendChild(row);
   } else {
     box.appendChild(
-      el("p", "muted", "Every configured gateway failed. Try again, or point the tool at different gateways."),
+      el("p", "muted", "All gateways failed. Try again, or adjust gateway settings."),
     );
   }
   return box;
@@ -501,13 +481,13 @@ function errorCopy(message: string, onRetry?: () => void): HTMLElement {
 function renderRejected(report: ProvenanceReport): HTMLElement {
   const box = el("details", "rejected");
   const summary = document.createElement("summary");
-  summary.textContent = `${report.rejected.length} candidate(s) excluded from verdict`;
+  summary.textContent = `${report.rejected.length} record(s) excluded`;
   box.appendChild(summary);
   box.appendChild(
     el(
       "p",
       "muted",
-      "Returned by the gateway's tag index but failed verification or did not bind to your bytes.",
+      "These records referenced your file's hash but failed cryptographic verification.",
     ),
   );
   for (const r of report.rejected) {

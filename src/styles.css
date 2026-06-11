@@ -126,17 +126,39 @@ h1 {
   font-size: 0.85rem;
 }
 
+/* Advanced gateway settings (buried by default) */
+.advanced {
+  margin-top: 0.6rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.advanced summary {
+  cursor: pointer;
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.advanced-desc {
+  margin: 0.4rem 0 0.5rem;
+  line-height: 1.45;
+}
+
+.gateway-group {
+  margin-top: 0.25rem;
+}
+
 .gateway-row {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  margin: 0.6rem 0 0;
-  font-size: 0.9rem;
+  margin: 0.4rem 0 0;
+  font-size: 0.85rem;
   color: var(--muted);
 }
 
 .gateway-row span {
-  min-width: 130px;
+  min-width: 50px;
   flex-shrink: 0;
 }
 
@@ -702,14 +724,57 @@ h1 {
   flex-shrink: 0;
 }
 
-/* --- Footer ------------------------------------------------------------- */
+/* --- Site footer (mirrors ar.io console style) -------------------------- */
 
-footer {
-  margin-top: 2.5rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid var(--hairline);
-  font-size: 0.85rem;
-  color: var(--muted);
+.site-footer {
+  margin-top: 3rem;
+  background: var(--lavender);
 }
 
-footer strong { color: var(--text); }
+.footer-inner {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-top: 1px solid rgba(35, 35, 45, 0.15);
+}
+
+.footer-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  color: var(--text);
+}
+
+.footer-copy { opacity: 0.8; }
+
+.footer-sep { opacity: 0.3; }
+
+.footer-link {
+  color: var(--text);
+  opacity: 0.6;
+  text-decoration: none;
+  transition: opacity 0.2s;
+}
+
+.footer-link:hover { opacity: 1; }
+
+.footer-social {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.footer-social a {
+  color: var(--text);
+  opacity: 0.6;
+  transition: opacity 0.2s;
+  display: flex;
+}
+
+.footer-social a:hover { opacity: 1; }
