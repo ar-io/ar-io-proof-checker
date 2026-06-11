@@ -133,7 +133,74 @@ function renderActions(report: ProvenanceReport): HTMLElement {
   });
 
   bar.append(jsonBtn, printBtn);
+  if (report.matches.length > 0) bar.appendChild(goVerifyButton(report));
   return bar;
+}
+
+// The optional "verify with the Go reference implementation" toggle: a
+// lazy-loaded WASM build of ar-io-agent's pkg/proof — the same kernel `ariod
+// verify` runs — re-checks every matched envelope. The JS verifier remains
+// the default and its verdict ALWAYS stands; this is a cross-implementation
+// confirmation, never a replacement. The ~1 MB (compressed) binary is fetched
+// on first use only, from this app's own assets — no external request.
+function goVerifyButton(report: ProvenanceReport): HTMLElement {
+  const wrap = el("div", "go-verify");
+  const btn = document.createElement("button");
+  btn.className = "btn btn-secondary";
+  btn.textContent = "Verify with Go reference (WASM)";
+  btn.addEventListener("click", () => {
+    btn.disabled = true;
+    void runGoVerify(report, wrap, btn);
+  });
+  wrap.appendChild(btn);
+  return wrap;
+}
+
+async function runGoVerify(
+  report: ProvenanceReport,
+  wrap: HTMLElement,
+  btn: HTMLButtonElement,
+): Promise<void> {
+  const status = el(
+    "p",
+    "muted",
+    "Loading the Go reference verifier (~1 MB compressed, one-time, served from this app's own assets)\u2026",
+  );
+  wrap.appendChild(status);
+  try {
+    const { verifyEnvelopeWasm } = await import("./verifier-wasm");
+    const box = el("div", "go-verify-results");
+    let disagreements = 0;
+    for (const m of report.matches) {
+      const wasm = await verifyEnvelopeWasm(m.envelope, report.fileHash);
+      const agrees = wasm.ok === m.verification.ok && wasm.contentHashOk === m.verification.contentHashOk;
+      if (!agrees) disagreements++;
+      const row = el(
+        "p",
+        agrees ? "check-ok" : "check-fail",
+        `${agrees ? "\u2713" : "\u2717"} ${m.txId.slice(0, 12)}\u2026 Go kernel: ` +
+          `${wasm.ok ? "verified" : `FAILED (${wasm.errors[0] ?? "unknown"})`}` +
+          `${agrees ? " \u2014 agrees with the JS verifier" : " \u2014 DISAGREES with the JS verifier"}`,
+      );
+      box.appendChild(row);
+    }
+    box.appendChild(
+      el(
+        "p",
+        disagreements === 0 ? "muted" : "check-fail",
+        disagreements === 0
+          ? `The Go reference implementation (ariod's own kernel, compiled to WASM) agrees with the in-browser JS verifier on all ${report.matches.length} matched envelope(s).`
+          : "The two implementations DISAGREE \u2014 this should never happen; please report it. The JS verdict above stands.",
+      ),
+    );
+    status.replaceWith(box);
+  } catch (e) {
+    status.textContent =
+      "The Go verifier could not be loaded (WASM unavailable or blocked in this browser). " +
+      "The JS verdict above stands \u2014 it is the same algorithm, independently implemented and " +
+      `conformance-tested. (${e instanceof Error ? e.message : String(e)})`;
+    btn.disabled = false;
+  }
 }
 
 function downloadBlob(filename: string, content: string, mime: string): void {

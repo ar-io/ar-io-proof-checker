@@ -102,6 +102,15 @@ implementation is what demonstrates the product's core claim — auditor-indepen
 verification with no ar.io code in the trust path. Conformance is enforced in CI:
 the verifier must reproduce every test vector byte-for-byte, or the build fails.
 
+**And you can cross-check the implementations against each other, live.** The
+"Verify with Go reference (WASM)" button re-verifies the matched envelopes with a
+WASM build of ar-io-agent's actual `pkg/proof` kernel — the same code `ariod verify`
+runs — built reproducibly at a pinned agent commit ([`wasm/PIN`](wasm/PIN)) and
+served from this app's own assets, loaded only on demand (~1 MB compressed; the
+base bundle stays light). The JS verifier remains the default; CI additionally
+enforces that both implementations return identical verdicts across the whole
+conformance corpus and a battery of adversarial negatives.
+
 > **Coverage note:** reverse lookup only finds events anchored on or after the
 > `ar-io-agent` release that introduced the content-hash tags. Older envelopes remain
 > fully verifiable through the identifier-based flows (`ariod verify <tx_id>`); they

@@ -11,6 +11,17 @@ import { renderReport } from "../src/render";
 import type { Match, ProvenanceReport } from "../src/provenance";
 import type { Envelope, VerificationResult } from "../src/types";
 
+// The Go-verify toggle lazy-imports the WASM adapter; swap it for a settable
+// stub so the toggle's three states (agree / disagree / load-failure) are
+// testable without instantiating WASM in happy-dom.
+const wasmStub = { impl: undefined as undefined | ((env: Envelope, hash?: string) => Promise<VerificationResult>) };
+vi.mock("../src/verifier-wasm", () => ({
+  verifyEnvelopeWasm: (env: Envelope, hash?: string) => {
+    if (!wasmStub.impl) throw new Error("wasm load failure (stubbed)");
+    return wasmStub.impl(env, hash);
+  },
+}));
+
 const okVerification = (role: "asset" | "baseline" | "observed"): VerificationResult => ({
   ok: true,
   specVersionOk: true,
@@ -148,6 +159,59 @@ describe("error verdict", () => {
     expect(text).toContain("verdict is unknown");
     expect(text).toContain("all 2 gateway(s) failed");
     expect(text).toContain("Every configured gateway failed");
+  });
+});
+
+describe("Go reference (WASM) verify toggle", () => {
+  const tick = () => new Promise((r) => setTimeout(r, 0));
+  const found = () =>
+    report({
+      verdict: "provenance-found",
+      matches: [match("asset", { type: "agent", tenant_id: "t", agent_id: "a" })],
+    });
+  const goBtn = (el: HTMLElement) =>
+    [...el.querySelectorAll("button")].find((b) => b.textContent?.includes("Go reference"));
+
+  it("offers the toggle only when there are matched envelopes", () => {
+    expect(goBtn(renderReport(found()))).toBeTruthy();
+    expect(goBtn(renderReport(report({ verdict: "no-match" })))).toBeUndefined();
+  });
+
+  it("renders per-envelope agreement when the Go kernel agrees", async () => {
+    wasmStub.impl = async () => ({ ...okVerification("asset"), errors: [] });
+    const el = renderReport(found());
+    goBtn(el)!.click();
+    await tick();
+    await tick();
+    expect(el.textContent).toContain("agrees with the JS verifier");
+    expect(el.textContent).toContain("ariod's own kernel");
+  });
+
+  it("flags a disagreement loudly and lets the JS verdict stand", async () => {
+    wasmStub.impl = async () => ({
+      ...okVerification("asset"),
+      ok: false,
+      signatureOk: false,
+      errors: ["proof: signature invalid"],
+    });
+    const el = renderReport(found());
+    goBtn(el)!.click();
+    await tick();
+    await tick();
+    expect(el.textContent).toContain("DISAGREES");
+    expect(el.textContent).toContain("The JS verdict above stands");
+  });
+
+  it("falls back gracefully when the WASM fails to load", async () => {
+    wasmStub.impl = undefined;
+    const el = renderReport(found());
+    goBtn(el)!.click();
+    await tick();
+    await tick();
+    expect(el.textContent).toContain("could not be loaded");
+    expect(el.textContent).toContain("The JS verdict above stands");
+    // Button re-enabled so the user can retry.
+    expect(goBtn(el)!.disabled).toBe(false);
   });
 });
 

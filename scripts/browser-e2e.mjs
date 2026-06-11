@@ -45,6 +45,23 @@ check("gateways-queried list rendered", /Gateways queried/.test(served ?? ""));
 check("scope honesty line present", /does NOT confirm|verifiable history/i.test(served ?? ""));
 await page.screenshot({ path: "/tmp/proof-checker-found.png", fullPage: true });
 
+// 2b. The Go reference (WASM) toggle: lazy-loads the pkg/proof kernel from the
+// app's own assets and must AGREE with the JS verifier on the matched envelope.
+const goBtn = await page.$("text=Verify with Go reference (WASM)");
+check("Go-verify toggle offered on a found verdict", !!goBtn);
+if (goBtn) {
+  await goBtn.click();
+  await page.waitForFunction(
+    () => /agrees with the JS verifier|could not be loaded|DISAGREES/.test(document.body.textContent ?? ""),
+    null,
+    { timeout: 60_000 },
+  );
+  const goText = (await page.textContent(".report")) ?? "";
+  check("WASM kernel instantiated and agreed", /agrees with the JS verifier/.test(goText));
+  check("no WASM disagreement", !/DISAGREES/.test(goText));
+  await page.screenshot({ path: "/tmp/proof-checker-go-verify.png", fullPage: true });
+}
+
 // 3. Tampered sample → tamper verdict.
 await page.setInputFiles("#file-input", `${ROOT}/samples/sample-demo-tampered.txt`);
 await page.waitForFunction(

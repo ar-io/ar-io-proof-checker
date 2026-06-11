@@ -36,7 +36,13 @@ Live / opt-in checks (network-dependent, never part of `npm test` or CI):
 
 ```bash
 ARIO_LIVE_E2E=1 npx vitest run test/live.e2e.test.ts   # real gateways + on-chain samples + 3 GiB streaming-hash check
-node scripts/browser-e2e.mjs                            # real headless-Chromium run of the production build (see script header for setup)
+node scripts/browser-e2e.mjs                            # real headless-Chromium run of the production build incl. the WASM toggle (see script header for setup)
+```
+
+Rebuilding the WASM-Go verifier (only needed when the pinned agent commit changes):
+
+```bash
+AGENT_SRC=../ar-io-agent bash scripts/build-wasm.sh    # reproducible build at the commit pinned in wasm/PIN → src/wasm/ario-proof.wasm
 ```
 
 ## Architecture
@@ -54,6 +60,14 @@ The flow is: **file → hash → discover → fetch → verify → history → r
 | `test/` | `conformance.test.ts` (corpus integrity + byte-exact conformance), `verifier.test.ts` (negative paths + co_signatures scope + registry), `crypto.test.ts`. |
 
 Workspace consumption resolves the package's TS source via its `exports` map; `npm run build:proof` emits `dist/` ESM + declarations (the publishable shape, exercised in CI). **Before any npm publish:** coordinator green light + confirm the real scope (`@ar.io/` vs `@ar-io/`).
+
+### WASM-Go reference verifier (the optional toggle)
+
+`src/wasm/ario-proof.wasm` is a **reproducible build of ar-io-agent's `pkg/proof`** — the same kernel `ariod verify` runs — at the agent commit pinned in `wasm/PIN` (commit + Go version + build flags + binary SHA-256; the agreement gate re-verifies the digest every test run). `wasm/main.go` is the thin `syscall/js` bridge; `scripts/build-wasm.sh` rebuilds it via a detached git worktree of the sibling agent checkout (shared-checkout discipline: the agent repo is read/build-only, never disturbed). `src/wasm/wasm_exec.js` is the Go runtime shim vendored from the exact toolchain that built the binary.
+
+`src/verifier-wasm.ts` is the lazy adapter: same `verifyEnvelope` shape as `@ar-io/proof`, crypto exclusively inside the WASM, per-check booleans classified fail-closed from the kernel's fail-fast error, content bind computed adapter-side (field comparison, not crypto). **The JS verifier remains the default and the headline** — the toggle is cross-implementation confirmation, never a replacement, and its failure to load never blocks a verdict. Invariant #1 holds: the ~3.5 MB binary (~1 MB gz) is fetched on first use only, from the app's OWN assets (it ships in `dist/`); the adapter + shim are code-split lazy chunks, so the base bundle stays ~23 KB gz.
+
+**The agreement gate** (`test/wasm-agreement.test.ts`) asserts the JS and WASM verifiers return IDENTICAL verdicts across the full corpus AND the adversarial negatives — including co-signed envelopes, with **no exceptions** (the pin includes the agent#12 `co_signatures` fix). A disagreement is cross-implementation drift = build failure. When re-pinning: bump `wasm/PIN`'s `agent_commit`, run `scripts/build-wasm.sh`, commit binary + PIN together.
 
 ### App (`src/`)
 
