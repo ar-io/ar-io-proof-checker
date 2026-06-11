@@ -8,6 +8,7 @@ import { defaultGatewayChain, fetchRegistryPeers, normalizeGateways } from "./ga
 import { fileSizeAdvisory, formatBytes } from "./hash";
 import { renderReport, renderReimport } from "./render";
 import { REPORT_SPEC, verifyReport, type ProofCheckReport } from "./report";
+import { iconCheckCircle, iconAlertTriangle, iconXCircle, iconAlertCircle } from "./icons";
 import "./styles.css";
 
 // --- DOM refs ----------------------------------------------------------------
@@ -85,6 +86,25 @@ dropzone.addEventListener("drop", (e) => {
   const file = e.dataTransfer?.files?.[0];
   if (file) void run(file);
 });
+
+// --- sample demos ------------------------------------------------------------
+
+for (const btn of document.querySelectorAll<HTMLButtonElement>(".sample-btn")) {
+  btn.addEventListener("click", () => {
+    const name = btn.dataset.sample;
+    if (!name) return;
+    void (async () => {
+      try {
+        const res = await fetch(`./samples/${name}`);
+        if (!res.ok) throw new Error(`fetch sample: ${res.status}`);
+        const blob = await res.blob();
+        void run(new File([blob], name));
+      } catch (e) {
+        show(explain(`Could not load sample: ${msg(e)}`));
+      }
+    })();
+  });
+}
 
 // --- report re-import --------------------------------------------------------
 
@@ -210,11 +230,11 @@ function renderSessionHistory(): void {
   const list = document.createElement("ul");
   list.className = "history-list";
 
-  const toneMap: Record<Verdict, { icon: string; cls: string }> = {
-    "provenance-found": { icon: "✓", cls: "history-verdict-ok" },
-    "tampered-bytes": { icon: "⚠", cls: "history-verdict-warn" },
-    "no-match": { icon: "✗", cls: "history-verdict-none" },
-    error: { icon: "!", cls: "history-verdict-err" },
+  const toneMap: Record<Verdict, { icon: () => SVGElement; cls: string }> = {
+    "provenance-found": { icon: () => iconCheckCircle("history-icon"), cls: "history-verdict-ok" },
+    "tampered-bytes": { icon: () => iconAlertTriangle("history-icon"), cls: "history-verdict-warn" },
+    "no-match": { icon: () => iconXCircle("history-icon"), cls: "history-verdict-none" },
+    error: { icon: () => iconAlertCircle("history-icon"), cls: "history-verdict-err" },
   };
 
   for (const entry of history) {
@@ -225,7 +245,7 @@ function renderSessionHistory(): void {
     const tone = toneMap[entry.verdict];
     const icon = document.createElement("span");
     icon.className = `history-verdict ${tone.cls}`;
-    icon.textContent = tone.icon;
+    icon.appendChild(tone.icon());
 
     const name = document.createElement("span");
     name.className = "history-name";

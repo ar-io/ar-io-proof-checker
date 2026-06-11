@@ -15,14 +15,30 @@ import {
   type ReportVerification,
 } from "./report";
 import type { AssetEvent, AssetHistory, ContentRole } from "./types";
+import {
+  iconCheckCircle,
+  iconAlertTriangle,
+  iconXCircle,
+  iconAlertCircle,
+  iconShieldCheck,
+  iconCheck,
+  iconLink,
+} from "./icons";
 
 // --- human-readable labels ---------------------------------------------------
 
-const VERDICT_COPY: Record<Verdict, { icon: string; title: string; tone: string }> = {
-  "provenance-found": { icon: "✓", title: "Provenance found", tone: "ok" },
-  "tampered-bytes": { icon: "⚠", title: "These bytes match a tamper record", tone: "warn" },
-  "no-match": { icon: "✗", title: "No provenance found", tone: "none" },
-  error: { icon: "!", title: "Lookup failed — verdict unknown", tone: "err" },
+const VERDICT_ICON: Record<Verdict, () => SVGElement> = {
+  "provenance-found": () => iconCheckCircle("verdict-icon"),
+  "tampered-bytes": () => iconAlertTriangle("verdict-icon"),
+  "no-match": () => iconXCircle("verdict-icon"),
+  error: () => iconAlertCircle("verdict-icon"),
+};
+
+const VERDICT_COPY: Record<Verdict, { title: string; tone: string }> = {
+  "provenance-found": { title: "Provenance found", tone: "ok" },
+  "tampered-bytes": { title: "These bytes match a tamper record", tone: "warn" },
+  "no-match": { title: "No provenance found", tone: "none" },
+  error: { title: "Lookup failed — verdict unknown", tone: "err" },
 };
 
 function humanEventType(raw: string): string {
@@ -57,7 +73,7 @@ export function renderReport(report: ProvenanceReport, onRetry?: () => void): HT
   // Verdict banner
   const meta = VERDICT_COPY[report.verdict];
   const banner = el("div", `verdict verdict-${meta.tone}`);
-  banner.appendChild(el("span", "verdict-icon", meta.icon));
+  banner.appendChild(VERDICT_ICON[report.verdict]());
   banner.appendChild(el("span", "verdict-title", meta.title));
   root.appendChild(banner);
 
@@ -201,13 +217,13 @@ async function runGoVerify(
       const wasm = await verifyEnvelopeWasm(m.envelope, report.fileHash);
       const agrees = wasm.ok === m.verification.ok && wasm.contentHashOk === m.verification.contentHashOk;
       if (!agrees) disagreements++;
-      const row = el(
-        "p",
-        agrees ? "check-pass" : "check-fail",
-        `${agrees ? "\u2713" : "\u2717"} ${m.txId.slice(0, 12)}\u2026 Go kernel: ` +
+      const row = el("p", agrees ? "check-pass" : "check-fail");
+      row.appendChild(agrees ? iconCheck("inline-icon") : iconXCircle("inline-icon"));
+      row.appendChild(document.createTextNode(
+        ` ${m.txId.slice(0, 12)}\u2026 Go kernel: ` +
           `${wasm.ok ? "verified" : `FAILED (${wasm.errors[0] ?? "unknown"})`}` +
           `${agrees ? " \u2014 agrees with the JS verifier" : " \u2014 DISAGREES with the JS verifier"}`,
-      );
+      ));
       box.appendChild(row);
     }
     box.appendChild(
@@ -245,7 +261,7 @@ export function renderReimport(report: ProofCheckReport, v: ReportVerification):
 
   const tone = v.ok ? "ok" : "err";
   const banner = el("div", `verdict verdict-${tone}`);
-  banner.appendChild(el("span", "verdict-icon", v.ok ? "✓" : "✗"));
+  banner.appendChild(v.ok ? iconCheckCircle("verdict-icon") : iconXCircle("verdict-icon"));
   banner.appendChild(
     el("span", "verdict-title", v.ok ? "Report re-verified" : "Report FAILED re-verification"),
   );
@@ -319,9 +335,10 @@ function renderHistory(h: AssetHistory, gateway: string): HTMLElement {
   card.appendChild(head);
 
   const cont = el("div", h.continuity === "linked" ? "continuity continuity-linked" : "continuity");
-  cont.textContent =
-    (h.continuity === "linked" ? "✓ " : "") +
-    `${h.events.length} event${h.events.length === 1 ? "" : "s"} — ${h.note}`;
+  if (h.continuity === "linked") cont.appendChild(iconLink("continuity-icon"));
+  cont.appendChild(document.createTextNode(
+    `${h.events.length} event${h.events.length === 1 ? "" : "s"} — ${h.note}`,
+  ));
   card.appendChild(cont);
 
   const timeline = el("ol", "timeline");
@@ -346,7 +363,10 @@ function renderEvent(ev: AssetEvent, gateway: string): HTMLElement {
   const line = el("div", "event-line");
   line.appendChild(el("span", "event-label", humanEventType(ev.envelope.event_type)));
   line.appendChild(el("span", "event-when", formatWhen(ev)));
-  line.appendChild(el("span", "verified-badge", "Verified"));
+  const vbadge = el("span", "verified-badge");
+  vbadge.appendChild(iconShieldCheck("verified-icon"));
+  vbadge.appendChild(document.createTextNode("Verified"));
+  line.appendChild(vbadge);
   if (ev.matchedRole) {
     const badge = el("span", `role-badge role-badge-${ROLE_TONE[ev.matchedRole]}`);
     badge.textContent = ROLE_LABEL[ev.matchedRole];
