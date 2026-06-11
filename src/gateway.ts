@@ -222,7 +222,6 @@ export interface TxRef {
 const GRAPHQL_QUERY = `query ($name: String!, $hash: String!) {
   transactions(
     tags: [
-      { name: "App-Name", values: ["ario-agent"] }
       { name: $name, values: [$hash] }
     ]
     first: 100
@@ -249,7 +248,11 @@ async function queryByTag(gateway: string, tagName: string, hash: string): Promi
     throw new Error(`gateway GraphQL error: ${body.errors.map((e) => e.message).join("; ")}`);
   }
   const edges = body.data?.transactions?.edges ?? [];
-  return edges.map((e) => e.node).filter((n): n is TxRef => !!n?.id);
+  return edges.map((e) => e.node).filter((n): n is TxRef => !!n?.id && hasAppName(n));
+}
+
+function hasAppName(tx: TxRef): boolean {
+  return tx.tags?.some((t) => t.name === "App-Name" && t.value === "ario-agent") ?? false;
 }
 
 // One gateway's view of the candidates for a hash: union of the three tag
@@ -317,7 +320,6 @@ export interface AssetEventTxRef extends TxRef {
 const ASSET_EVENTS_QUERY = `query ($tenant: String!, $agent: String!, $asset: String!) {
   transactions(
     tags: [
-      { name: "App-Name", values: ["ario-agent"] }
       { name: "Tenant-Id", values: [$tenant] }
       { name: "Agent-Id", values: [$agent] }
       { name: "Asset-Id", values: [$asset] }
@@ -354,7 +356,7 @@ async function findAssetEventTxsOn(
     throw new Error(`gateway GraphQL error: ${body.errors.map((e) => e.message).join("; ")}`);
   }
   const edges = body.data?.transactions?.edges ?? [];
-  return edges.map((e) => e.node).filter((n): n is AssetEventTxRef => !!n?.id);
+  return edges.map((e) => e.node).filter((n): n is AssetEventTxRef => !!n?.id && hasAppName(n));
 }
 
 // Every event anchored for a given asset under one (tenant, agent): the

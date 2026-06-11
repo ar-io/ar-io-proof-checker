@@ -46,7 +46,7 @@ function stubGoodFetch(envelope: Envelope = registered): void {
     const url = typeof input === "string" ? input : input.toString();
     if (url.endsWith("/graphql")) {
       return Response.json({
-        data: { transactions: { edges: [{ node: { id: "TX1", tags: [], block: { height: 1, timestamp: 1_700_000_000 } } }] } },
+        data: { transactions: { edges: [{ node: { id: "TX1", tags: [{ name: "App-Name", value: "ario-agent" }], block: { height: 1, timestamp: 1_700_000_000 } } }] } },
       });
     }
     if (/\/raw\//.test(url)) return Response.json(envelope);
@@ -58,7 +58,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 async function goodProvenanceReport() {
   stubGoodFetch();
-  return checkProvenanceForHash(REGISTERED_HASH, [GATEWAY]);
+  return checkProvenanceForHash(REGISTERED_HASH, [GATEWAY], [GATEWAY]);
 }
 
 describe("buildReport", () => {
@@ -70,7 +70,8 @@ describe("buildReport", () => {
     expect(report.verdict).toBe("provenance-found");
     expect(report.file_sha256).toBe(REGISTERED_HASH);
     expect(report.gateway).toBe(GATEWAY);
-    expect(report.gateways_queried).toEqual([GATEWAY]);
+    expect(report.graphql_gateways_queried).toEqual([GATEWAY]);
+    expect(report.data_gateways_queried).toEqual([GATEWAY]);
     expect(report.matches.length).toBeGreaterThan(0);
     expect(report.scope.length).toBeGreaterThan(0); // disclaimers travel with it
     // The embedded raw envelope is what makes it re-verifiable.
@@ -135,7 +136,7 @@ describe("reportToHtml", () => {
     // (signature won't match, but reportToHtml is pure presentation — we only
     // assert escaping here, not verification.)
     stubGoodFetch(evil);
-    const report = buildReport(await checkProvenanceForHash(REGISTERED_HASH, [GATEWAY]));
+    const report = buildReport(await checkProvenanceForHash(REGISTERED_HASH, [GATEWAY], [GATEWAY]));
     // Force the hostile string into the rendered surface even if it was rejected:
     report.histories.push({
       tenant_id: "t",
@@ -160,7 +161,7 @@ describe("verifyReport edge cases", () => {
       if (url.endsWith("/graphql")) return Response.json({ data: { transactions: { edges: [] } } });
       return new Response("nf", { status: 404 });
     });
-    const report = buildReport(await checkProvenanceForHash("a".repeat(64), [GATEWAY]));
+    const report = buildReport(await checkProvenanceForHash("a".repeat(64), [GATEWAY], [GATEWAY]));
     expect(report.verdict).toBe("no-match");
     expect(Object.keys(report.envelopes)).toHaveLength(0);
 

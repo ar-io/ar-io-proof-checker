@@ -64,7 +64,7 @@ function stubFetch(opts: {
         return new Response("boom", { status: 502, statusText: "Bad Gateway" });
       }
       const list = isAssetQuery ? (opts.assetEdges ?? []) : (opts.hashEdges ?? []);
-      const edges = list.map((n) => ({ node: { id: n.id, tags: [], block: n.block ?? null } }));
+      const edges = list.map((n) => ({ node: { id: n.id, tags: [{ name: "App-Name", value: "ario-agent" }], block: n.block ?? null } }));
       return Response.json({ data: { transactions: { edges } } });
     }
     const m = /\/raw\/([^/]+)$/.exec(url);
@@ -86,7 +86,7 @@ describe("checkProvenanceForHash", () => {
       assetEdges: [{ id: "TX_REG", block: { height: 1, timestamp: 1_700_000_000 } }],
       envelopes: { TX_REG: registered },
     });
-    const report = await checkProvenanceForHash(REGISTERED_HASH, [GATEWAY]);
+    const report = await checkProvenanceForHash(REGISTERED_HASH, [GATEWAY], [GATEWAY]);
     expect(report.verdict).toBe("provenance-found");
     expect(report.matches).toHaveLength(1);
     expect(report.matches[0].role).toBe("asset");
@@ -108,7 +108,7 @@ describe("checkProvenanceForHash", () => {
       ],
       envelopes: { TX_REG: registered, TX_TAMPER: tampered },
     });
-    const report = await checkProvenanceForHash(REGISTERED_HASH, [GATEWAY]);
+    const report = await checkProvenanceForHash(REGISTERED_HASH, [GATEWAY], [GATEWAY]);
     expect(report.verdict).toBe("provenance-found");
     expect(report.histories).toHaveLength(1);
 
@@ -126,28 +126,28 @@ describe("checkProvenanceForHash", () => {
       assetEdges: [{ id: "TX_TAMPER", block: { height: 20, timestamp: 1_700_002_000 } }],
       envelopes: { TX_TAMPER: tampered },
     });
-    const report = await checkProvenanceForHash(OBSERVED_HASH, [GATEWAY]);
+    const report = await checkProvenanceForHash(OBSERVED_HASH, [GATEWAY], [GATEWAY]);
     expect(report.verdict).toBe("tampered-bytes");
     expect(report.histories[0].events[0].matchedRole).toBe("observed");
   });
 
   it("returns no-match when nothing references the hash", async () => {
     stubFetch({ hashEdges: [] });
-    const report = await checkProvenanceForHash("a".repeat(64), [GATEWAY]);
+    const report = await checkProvenanceForHash("a".repeat(64), [GATEWAY], [GATEWAY]);
     expect(report.verdict).toBe("no-match");
     expect(report.histories).toHaveLength(0);
   });
 
   it("returns error (not no-match) when the gateway lookup fails", async () => {
     stubFetch({ hashEdges: null });
-    const report = await checkProvenanceForHash(REGISTERED_HASH, [GATEWAY]);
+    const report = await checkProvenanceForHash(REGISTERED_HASH, [GATEWAY], [GATEWAY]);
     expect(report.verdict).toBe("error");
     expect(report.error).toBeTruthy();
   });
 
   it("rejects a tag-matched candidate whose bytes do not actually bind", async () => {
     stubFetch({ hashEdges: [{ id: "TX_LIE" }], envelopes: { TX_LIE: registered } });
-    const report = await checkProvenanceForHash("b".repeat(64), [GATEWAY]);
+    const report = await checkProvenanceForHash("b".repeat(64), [GATEWAY], [GATEWAY]);
     expect(report.verdict).toBe("no-match");
     expect(report.rejected).toHaveLength(1);
     expect(report.rejected[0].txId).toBe("TX_LIE");
@@ -177,7 +177,7 @@ describe("registry peer extension", () => {
         const body = typeof init?.body === "string" ? init.body : "";
         const isAssetQuery = body.includes("Asset-Id");
         const list =
-          isPeer && opts.peerHasIt && !isAssetQuery ? [{ node: { id: "TX_REG", tags: [], block: null } }] : [];
+          isPeer && opts.peerHasIt && !isAssetQuery ? [{ node: { id: "TX_REG", tags: [{ name: "App-Name", value: "ario-agent" }], block: null } }] : [];
         return Response.json({ data: { transactions: { edges: list } } });
       }
       if (/\/raw\//.test(url)) return Response.json(registered);
@@ -188,37 +188,37 @@ describe("registry peer extension", () => {
 
   it("rescues an all-failed chain via a discovered peer (error → found)", async () => {
     stubHostFetch({ configured: "fail", peerHasIt: true });
-    const r = await checkProvenanceForHash(REGISTERED_HASH, [GATEWAY], { registryPeers: PEERS });
+    const r = await checkProvenanceForHash(REGISTERED_HASH, [GATEWAY], [GATEWAY], { registryPeers: PEERS });
     expect(r.verdict).toBe("provenance-found");
     expect(r.gateway).toBe("https://peer.example");
-    expect(r.gatewaysQueried).toEqual([GATEWAY, "https://peer.example"]);
+    expect(r.dataGatewaysQueried).toEqual([GATEWAY, "https://peer.example"]);
     expect(r.registryPeersUsed).toEqual(["https://peer.example"]);
   });
 
   it("extends an all-empty chain (no-match → found on a peer)", async () => {
     stubHostFetch({ configured: "empty", peerHasIt: true });
-    const r = await checkProvenanceForHash(REGISTERED_HASH, [GATEWAY], { registryPeers: PEERS });
+    const r = await checkProvenanceForHash(REGISTERED_HASH, [GATEWAY], [GATEWAY], { registryPeers: PEERS });
     expect(r.verdict).toBe("provenance-found");
     expect(r.gateway).toBe("https://peer.example");
   });
 
   it("upgrades error to an honest no-match when a peer is reachable but empty", async () => {
     stubHostFetch({ configured: "fail", peerHasIt: false });
-    const r = await checkProvenanceForHash(REGISTERED_HASH, [GATEWAY], { registryPeers: PEERS });
+    const r = await checkProvenanceForHash(REGISTERED_HASH, [GATEWAY], [GATEWAY], { registryPeers: PEERS });
     expect(r.verdict).toBe("no-match");
     expect(r.gateway).toBe("https://peer.example");
   });
 
   it("keeps the original error when the peers also fail", async () => {
     stubHostFetch({ configured: "fail", peerFails: true });
-    const r = await checkProvenanceForHash(REGISTERED_HASH, [GATEWAY], { registryPeers: PEERS });
+    const r = await checkProvenanceForHash(REGISTERED_HASH, [GATEWAY], [GATEWAY], { registryPeers: PEERS });
     expect(r.verdict).toBe("error");
     expect(r.registryPeersUsed).toEqual(["https://peer.example"]);
   });
 
   it("keeps the original outcome when peer discovery itself fails", async () => {
     stubHostFetch({ configured: "fail" });
-    const r = await checkProvenanceForHash(REGISTERED_HASH, [GATEWAY], {
+    const r = await checkProvenanceForHash(REGISTERED_HASH, [GATEWAY], [GATEWAY], {
       registryPeers: () => Promise.reject(new Error("registry down")),
     });
     expect(r.verdict).toBe("error");
@@ -228,7 +228,7 @@ describe("registry peer extension", () => {
   it("never consults the registry when the configured chain finds the bytes", async () => {
     stubFetch({ hashEdges: [{ id: "TX_REG" }], assetEdges: [], envelopes: { TX_REG: registered } });
     const peersFn = vi.fn(PEERS);
-    const r = await checkProvenanceForHash(REGISTERED_HASH, [GATEWAY], { registryPeers: peersFn });
+    const r = await checkProvenanceForHash(REGISTERED_HASH, [GATEWAY], [GATEWAY], { registryPeers: peersFn });
     expect(r.verdict).toBe("provenance-found");
     expect(peersFn).not.toHaveBeenCalled();
     expect(r.registryPeersUsed).toBeUndefined();
@@ -240,6 +240,7 @@ describe("registry peer extension", () => {
     const peersFn = vi.fn(PEERS);
     const r = await checkProvenance(
       new Blob([new Uint8Array([1, 2, 3]) as unknown as BlobPart]),
+      [GATEWAY],
       [GATEWAY],
       undefined,
       { registryPeers: peersFn },
@@ -306,7 +307,7 @@ describe("candidate cap + tie-break", () => {
     for (const e of many) envelopes[e.id] = registered;
     stubFetch({ hashEdges: many, assetEdges: [], envelopes });
 
-    const report = await checkProvenanceForHash(REGISTERED_HASH, [GATEWAY]);
+    const report = await checkProvenanceForHash(REGISTERED_HASH, [GATEWAY], [GATEWAY]);
     expect(report.candidatesTruncated).toBe(true);
     // Only the first MAX_CANDIDATES are processed (all of which bind here).
     expect(report.matches.length).toBe(MAX_CANDIDATES);
@@ -318,7 +319,7 @@ describe("candidate cap + tie-break", () => {
       assetEdges: [{ id: "TX_REG", block: { height: 1, timestamp: 1 } }],
       envelopes: { TX_REG: registered },
     });
-    const report = await checkProvenanceForHash(REGISTERED_HASH, [GATEWAY]);
+    const report = await checkProvenanceForHash(REGISTERED_HASH, [GATEWAY], [GATEWAY]);
     expect(report.candidatesTruncated).toBe(false);
   });
 
@@ -331,7 +332,7 @@ describe("candidate cap + tie-break", () => {
       ],
       envelopes: { TX_REG: registered, TX_TAMP: tampered },
     });
-    const report = await checkProvenanceForHash(REGISTERED_HASH, [GATEWAY]);
+    const report = await checkProvenanceForHash(REGISTERED_HASH, [GATEWAY], [GATEWAY]);
     expect(report.histories[0].events.map((e) => e.envelope.event_type)).toEqual([
       "tamper_detected",
       "asset_registered",

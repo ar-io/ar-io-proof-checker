@@ -64,8 +64,9 @@ export interface ProofCheckReport {
   // the per-event Arweave block times inside `histories`.
   generated_at: string;
   generated_at_note: string;
-  gateway: string; // the gateway whose view produced the result
-  gateways_queried: string[]; // everything actually asked, in order (incl. registry peers)
+  gateway: string; // the GraphQL gateway whose view produced the result
+  graphql_gateways_queried: string[]; // GraphQL gateways asked, in order
+  data_gateways_queried: string[]; // data gateways asked, in order
   registry_peers_used?: string[]; // fallback gateways discovered via /ar-io/peers, if queried
   file_sha256: string;
   verdict: Verdict;
@@ -100,7 +101,8 @@ export function buildReport(report: ProvenanceReport): ProofCheckReport {
     generated_at: new Date().toISOString(),
     generated_at_note: "Client wall-clock; advisory only. Trusted times are the Arweave block times in histories.",
     gateway: report.gateway,
-    gateways_queried: report.gatewaysQueried,
+    graphql_gateways_queried: report.graphqlGatewaysQueried,
+    data_gateways_queried: report.dataGatewaysQueried,
     ...(report.registryPeersUsed?.length ? { registry_peers_used: report.registryPeersUsed } : {}),
     file_sha256: report.fileHash,
     verdict: report.verdict,
@@ -208,21 +210,42 @@ export async function verifyReport(report: ProofCheckReport): Promise<ReportVeri
 // on-chain-derived strings are HTML-escaped — a report may embed attacker-chosen
 // tenant/agent/key strings. The machine-verifiable JSON is the re-verifiable
 // artifact; this is the human presentation.
+function humanEventType(raw: string): string {
+  const map: Record<string, string> = {
+    asset_registered: "Asset registered",
+    tamper_detected: "Tamper detected",
+    asset_missing: "Asset missing",
+    verification_checkpoint: "Verification checkpoint",
+    key_retired: "Key retired",
+    policy_changed: "Policy changed",
+  };
+  return map[raw] ?? raw;
+}
+
+function humanRole(raw: string): string {
+  const map: Record<string, string> = {
+    asset: "Registered content",
+    baseline: "Known-good baseline",
+    observed: "Flagged content",
+  };
+  return map[raw] ?? raw;
+}
+
 export function reportToHtml(report: ProofCheckReport): string {
   const verdictLabel: Record<Verdict, string> = {
-    "provenance-found": "✓ Provenance found",
-    "tampered-bytes": "⚠ These bytes match a TAMPER record",
-    "no-match": "✗ No provenance found",
-    error: "! Lookup failed — verdict unknown",
+    "provenance-found": "Provenance found",
+    "tampered-bytes": "These bytes match a tamper record",
+    "no-match": "No provenance found",
+    error: "Lookup failed — verdict unknown",
   };
 
   const matchRows = report.matches
     .map(
       (m) => `<tr>
-        <td>${esc(m.event_type)}</td>
+        <td>${esc(humanEventType(m.event_type))}</td>
         <td>${esc(m.tenant_id)}</td>
         <td>${esc(m.agent_id)}</td>
-        <td class="mono">${esc(m.role)}</td>
+        <td>${esc(humanRole(m.role))}</td>
         <td class="mono small">${esc(m.signing_key)}</td>
         <td class="mono small">${esc(m.tx_id)}</td>
       </tr>`,
@@ -233,15 +256,15 @@ export function reportToHtml(report: ProofCheckReport): string {
     .map(
       (h) => `<div class="history">
         <h3>${esc(h.asset_id)}</h3>
-        <p class="muted">tenant ${esc(h.tenant_id)} · agent ${esc(h.agent_id)} · ${esc(h.continuity)} — ${esc(h.note)}</p>
+        <p class="muted">Tenant ${esc(h.tenant_id)} · Agent ${esc(h.agent_id)} · ${esc(h.continuity)} — ${esc(h.note)}</p>
         <table>
-          <tr><th>event</th><th>when</th><th>your file?</th><th>tx</th></tr>
+          <tr><th>Event</th><th>When</th><th>Your file</th><th>Transaction</th></tr>
           ${h.events
             .map(
               (e) => `<tr>
-                <td>${esc(e.event_type)}</td>
+                <td>${esc(humanEventType(e.event_type))}</td>
                 <td class="small">${esc(formatWhen(e))}</td>
-                <td>${e.matched_role ? esc(e.matched_role) : "—"}</td>
+                <td>${e.matched_role ? esc(humanRole(e.matched_role)) : "—"}</td>
                 <td class="mono small">${esc(e.tx_id)}</td>
               </tr>`,
             )
@@ -287,11 +310,11 @@ export function reportToHtml(report: ProofCheckReport): string {
 <h1>ar.io provenance report</h1>
 <p class="verdict">${esc(verdictLabel[report.verdict])}</p>
 <div class="kv"><b>File SHA-256</b><span class="mono small">${esc(report.file_sha256)}</span></div>
-<div class="kv"><b>Gateway</b>${esc(report.gateway)}</div>
-<div class="kv"><b>Gateways queried</b>${esc((report.gateways_queried ?? [report.gateway]).join(", "))}</div>
+<div class="kv"><b>GraphQL gateways</b>${esc((report.graphql_gateways_queried ?? [report.gateway]).join(", "))}</div>
+<div class="kv"><b>Data gateways</b>${esc((report.data_gateways_queried ?? [report.gateway]).join(", "))}</div>
 <div class="kv"><b>Generated</b>${esc(report.generated_at)} <span class="muted">(advisory client clock)</span></div>
 <div class="kv"><b>Tool</b>${esc(report.tool.name)} ${esc(report.tool.version)} · ${esc(report.spec)}</div>
-${report.matches.length ? `<h2>Matched records</h2><table><tr><th>event</th><th>tenant</th><th>agent</th><th>role</th><th>signing key</th><th>tx</th></tr>${matchRows}</table>` : ""}
+${report.matches.length ? `<h2>Matched records</h2><table><tr><th>Event</th><th>Tenant</th><th>Agent</th><th>Role</th><th>Signing key</th><th>Transaction</th></tr>${matchRows}</table>` : ""}
 ${historyBlocks ? `<h2>Asset history</h2>${historyBlocks}` : ""}
 ${rejectedBlock}
 <h2>Scope &amp; how to trust this report</h2>

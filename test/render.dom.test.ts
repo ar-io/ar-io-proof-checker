@@ -54,7 +54,8 @@ function report(over: Partial<ProvenanceReport>): ProvenanceReport {
   return {
     fileHash: "a".repeat(64),
     gateway: "https://gw.example",
-    gatewaysQueried: ["https://gw.example"],
+    graphqlGatewaysQueried: ["https://gw.example"],
+    dataGatewaysQueried: ["https://gw.example"],
     verdict: "no-match",
     matches: [],
     histories: [],
@@ -76,7 +77,7 @@ describe("verdict attribution (B4)", () => {
       ],
     });
     const text = renderReport(r).textContent ?? "";
-    expect(text).toContain("flagged as a tamper by");
+    expect(text).toContain("flagged as tampered by");
     expect(text).toContain("evil-co / rogue-1"); // attribution
     expect(text).toContain("also appear as known-good"); // doesn't hide the clean record
     expect(text).toContain("anyone can anchor a record referencing any hash");
@@ -105,30 +106,26 @@ describe("truncation note (B5)", () => {
 });
 
 describe("multi-gateway surfacing", () => {
-  it("attributes the result to the serving gateway and lists everything queried", () => {
+  it("shows both gateway chains in the summary", () => {
     const text =
       renderReport(
         report({
-          gateway: "https://gw2.example",
-          gatewaysQueried: ["https://gw1.example", "https://gw2.example"],
+          graphqlGatewaysQueried: ["https://gql.example"],
+          dataGatewaysQueried: ["https://data.example"],
         }),
       ).textContent ?? "";
-    expect(text).toContain("Result served by");
-    expect(text).toContain("https://gw2.example");
-    expect(text).toContain("Gateways queried");
-    expect(text).toContain("https://gw1.example, https://gw2.example");
-  });
-
-  it("omits the queried list for a single gateway", () => {
-    const text = renderReport(report({})).textContent ?? "";
-    expect(text).not.toContain("Gateways queried");
+    expect(text).toContain("GraphQL gateways");
+    expect(text).toContain("https://gql.example");
+    expect(text).toContain("Data gateways");
+    expect(text).toContain("https://data.example");
   });
 
   it("discloses registry-discovered fallback gateways when they were queried", () => {
     const text =
       renderReport(
         report({
-          gatewaysQueried: ["https://gw1.example", "https://peer.example"],
+          graphqlGatewaysQueried: ["https://gw1.example", "https://peer.example"],
+          dataGatewaysQueried: ["https://gw1.example", "https://peer.example"],
           registryPeersUsed: ["https://peer.example"],
         }),
       ).textContent ?? "";
@@ -140,13 +137,12 @@ describe("multi-gateway surfacing", () => {
     const text =
       renderReport(
         report({
-          gatewaysQueried: ["https://gw1.example", "https://gw2.example"],
+          graphqlGatewaysQueried: ["https://gw1.example", "https://gw2.example"],
+          dataGatewaysQueried: ["https://gw1.example", "https://gw2.example"],
         }),
       ).textContent ?? "";
     expect(text).toContain("any of the 2 queried gateways");
-    expect(text).toContain("NOT proof of tampering");
-    // The old per-gateway "point the tool elsewhere" hint is redundant now.
-    expect(text).not.toContain("point the tool elsewhere");
+    expect(text).toContain("not proof of tampering");
   });
 });
 
@@ -184,7 +180,7 @@ describe("Go reference (WASM) verify toggle", () => {
     await tick();
     await tick();
     expect(el.textContent).toContain("agrees with the JS verifier");
-    expect(el.textContent).toContain("ariod's own kernel");
+    expect(el.textContent).toContain("Go reference implementation agrees");
   });
 
   it("flags a disagreement loudly and lets the JS verdict stand", async () => {

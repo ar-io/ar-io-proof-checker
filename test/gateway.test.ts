@@ -261,7 +261,7 @@ function stubTagFetch(
 
 function edges(...ids: string[]): Response {
   return Response.json({
-    data: { transactions: { edges: ids.map((id) => ({ node: { id, tags: [] } })) } },
+    data: { transactions: { edges: ids.map((id) => ({ node: { id, tags: [{ name: "App-Name", value: "ario-agent" }] } })) } },
   });
 }
 

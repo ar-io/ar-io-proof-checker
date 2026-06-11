@@ -1,32 +1,62 @@
-// Entry point. Wires the drop zone / file picker / gateway field to the
-// provenance check and renders the result. Everything runs in the browser; no
-// network call is made until the user supplies a file.
+// Entry point. Wires the drop zone / file picker / gateway field / tab toggle
+// to the provenance check and renders the result. Everything runs in the browser;
+// no network call is made until the user supplies a file.
 
 import { checkProvenance } from "./provenance";
+import type { ProvenanceReport, Verdict } from "./provenance";
 import { defaultGatewayChain, fetchRegistryPeers, normalizeGateways } from "./gateway";
 import { fileSizeAdvisory, formatBytes } from "./hash";
 import { renderReport, renderReimport } from "./render";
 import { REPORT_SPEC, verifyReport, type ProofCheckReport } from "./report";
 import "./styles.css";
 
+// --- DOM refs ----------------------------------------------------------------
+
+const tabCheck = byId("tab-check");
+const tabVerify = byId("tab-verify");
+const panelCheck = byId("panel-check");
+const panelVerify = byId("panel-verify");
 const dropzone = byId("dropzone");
 const fileInput = byId<HTMLInputElement>("file-input");
-const gatewayInput = byId<HTMLInputElement>("gateway");
+const graphqlGatewayInput = byId<HTMLInputElement>("graphql-gateway");
+const dataGatewayInput = byId<HTMLInputElement>("data-gateway");
 const reportInput = byId<HTMLInputElement>("report-input");
 const results = byId("results");
+const historyContainer = byId("history");
 
 // The default chain adapts to where the app is served from: behind an ar.io
 // gateway (ArNS / sandbox subdomain) that gateway heads the list — it just
 // delivered this page, so it's up and CORS-reachable. On localhost or a
 // non-gateway host this is a no-op and the static anchors stand alone.
 const DEFAULT_CHAIN = defaultGatewayChain(window.location.hostname);
-gatewayInput.value = DEFAULT_CHAIN.join(", ");
-gatewayInput.placeholder = DEFAULT_CHAIN.join(", ");
+graphqlGatewayInput.value = DEFAULT_CHAIN.join(", ");
+graphqlGatewayInput.placeholder = DEFAULT_CHAIN.join(", ");
+dataGatewayInput.value = DEFAULT_CHAIN.join(", ");
+dataGatewayInput.placeholder = DEFAULT_CHAIN.join(", ");
 
-// Monotonic token so a slower earlier request can't overwrite a newer result
-// (B2). Each run captures the token at start; on completion it only renders if
-// it's still the latest. Shared across file-check and report-reimport.
+// --- tab toggle (R1) ---------------------------------------------------------
+
+tabCheck.addEventListener("click", () => switchTab("check"));
+tabVerify.addEventListener("click", () => switchTab("verify"));
+
+function switchTab(mode: "check" | "verify"): void {
+  const isCheck = mode === "check";
+  tabCheck.classList.toggle("tab-active", isCheck);
+  tabVerify.classList.toggle("tab-active", !isCheck);
+  tabCheck.setAttribute("aria-selected", String(isCheck));
+  tabVerify.setAttribute("aria-selected", String(!isCheck));
+  panelCheck.hidden = !isCheck;
+  panelVerify.hidden = isCheck;
+}
+
+// --- run token (B2) ----------------------------------------------------------
+
+// Monotonic token so a slower earlier request can't overwrite a newer result.
+// Each run captures the token at start; on completion it only renders if it's
+// still the latest. Shared across file-check and report-reimport.
 let activeRun = 0;
+
+// --- file check input --------------------------------------------------------
 
 dropzone.addEventListener("click", () => fileInput.click());
 dropzone.addEventListener("keydown", (e) => {
@@ -56,6 +86,8 @@ dropzone.addEventListener("drop", (e) => {
   if (file) void run(file);
 });
 
+// --- report re-import --------------------------------------------------------
+
 reportInput.addEventListener("change", () => {
   const file = reportInput.files?.[0];
   reportInput.value = ""; // B8
@@ -77,17 +109,27 @@ async function runReport(file: File): Promise<void> {
   }
 }
 
+// --- provenance check --------------------------------------------------------
+
 async function run(file: File): Promise<void> {
   const token = ++activeRun;
 
-  // Each gateway must be a valid http(s) URL (B10); comma-separated list,
+  // Each gateway must be a valid http(s) URL (B10); comma-separated lists,
   // tried in order with fallback.
-  let gateways: string[];
+  let graphqlGateways: string[];
+  let dataGateways: string[];
   try {
-    gateways = normalizeGateways(gatewayInput.value);
-    gatewayInput.value = gateways.join(", ");
+    graphqlGateways = normalizeGateways(graphqlGatewayInput.value);
+    graphqlGatewayInput.value = graphqlGateways.join(", ");
   } catch (e) {
-    show(explain(`Invalid gateway: ${msg(e)}`));
+    show(explain(`Invalid GraphQL gateway: ${msg(e)}`));
+    return;
+  }
+  try {
+    dataGateways = normalizeGateways(dataGatewayInput.value);
+    dataGatewayInput.value = dataGateways.join(", ");
+  } catch (e) {
+    show(explain(`Invalid data gateway: ${msg(e)}`));
     return;
   }
 
@@ -103,24 +145,112 @@ async function run(file: File): Promise<void> {
   show(progress.box);
   try {
     // Registry-driven fallback discovery only applies to the untouched default
-    // chain — a user-typed list is respected strictly (their gateways, no
-    // silent additions).
-    const isDefaultChain = gateways.join(", ") === DEFAULT_CHAIN.join(", ");
+    // chains — a user-typed list is respected strictly (their gateways, no
+    // silent additions). Peers are fetched from data gateways (/ar-io/peers
+    // is an HTTP GET, not a GraphQL endpoint).
+    const isDefaultChain =
+      graphqlGateways.join(", ") === DEFAULT_CHAIN.join(", ") &&
+      dataGateways.join(", ") === DEFAULT_CHAIN.join(", ");
     const report = await checkProvenance(
       file,
-      gateways,
+      graphqlGateways,
+      dataGateways,
       (done, total) => {
         if (token === activeRun) progress.update(done, total);
       },
-      isDefaultChain ? { registryPeers: () => fetchRegistryPeers(gateways) } : undefined,
+      isDefaultChain ? { registryPeers: () => fetchRegistryPeers(dataGateways) } : undefined,
     );
-    if (token === activeRun) show(renderReport(report));
+    if (token === activeRun) {
+      const retry = () => void run(file);
+      show(renderReport(report, retry));
+      addHistory(file.name, report);
+    }
   } catch (e) {
     // checkProvenance handles its own errors into a report; this only fires on
     // an unexpected fault (e.g. hashing). Surface it rather than swallowing.
-    if (token === activeRun) show(explain(`Unexpected error: ${msg(e)}`));
+    if (token === activeRun) show(explain(`Unexpected error: ${msg(e)}`, () => void run(file)));
   }
 }
+
+// --- session history (R3) ----------------------------------------------------
+
+const MAX_HISTORY = 50;
+
+interface HistoryEntry {
+  filename: string;
+  fileHash: string;
+  verdict: Verdict;
+  timestamp: number;
+  dom: HTMLElement; // the rendered result to re-display on click
+}
+
+const history: HistoryEntry[] = [];
+
+function addHistory(filename: string, report: ProvenanceReport): void {
+  history.unshift({
+    filename,
+    fileHash: report.fileHash,
+    verdict: report.verdict,
+    timestamp: Date.now(),
+    dom: results.firstElementChild as HTMLElement,
+  });
+  if (history.length > MAX_HISTORY) history.length = MAX_HISTORY;
+  renderSessionHistory();
+}
+
+function renderSessionHistory(): void {
+  if (history.length === 0) {
+    historyContainer.replaceChildren();
+    return;
+  }
+  const title = document.createElement("p");
+  title.className = "history-title";
+  title.textContent = "Session history";
+
+  const list = document.createElement("ul");
+  list.className = "history-list";
+
+  const toneMap: Record<Verdict, { icon: string; cls: string }> = {
+    "provenance-found": { icon: "✓", cls: "history-verdict-ok" },
+    "tampered-bytes": { icon: "⚠", cls: "history-verdict-warn" },
+    "no-match": { icon: "✗", cls: "history-verdict-none" },
+    error: { icon: "!", cls: "history-verdict-err" },
+  };
+
+  for (const entry of history) {
+    const li = document.createElement("li");
+    li.className = "history-entry";
+    if (results.firstElementChild === entry.dom) li.classList.add("history-entry-active");
+
+    const tone = toneMap[entry.verdict];
+    const icon = document.createElement("span");
+    icon.className = `history-verdict ${tone.cls}`;
+    icon.textContent = tone.icon;
+
+    const name = document.createElement("span");
+    name.className = "history-name";
+    name.textContent = entry.filename;
+
+    const hash = document.createElement("span");
+    hash.className = "history-hash";
+    hash.textContent = entry.fileHash.slice(0, 8) + "…";
+
+    const time = document.createElement("span");
+    time.className = "history-time";
+    time.textContent = new Date(entry.timestamp).toLocaleTimeString();
+
+    li.append(icon, name, hash, time);
+    li.addEventListener("click", () => {
+      results.replaceChildren(entry.dom);
+      renderSessionHistory();
+    });
+    list.appendChild(li);
+  }
+
+  historyContainer.replaceChildren(title, list);
+}
+
+// --- DOM helpers -------------------------------------------------------------
 
 function show(node: HTMLElement): void {
   results.replaceChildren(node);
@@ -130,10 +260,18 @@ function msg(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
 
-function explain(text: string): HTMLElement {
+function explain(text: string, onRetry?: () => void): HTMLElement {
   const box = document.createElement("div");
   box.className = "explain";
   box.textContent = text;
+  if (onRetry) {
+    const btn = document.createElement("button");
+    btn.className = "btn btn-secondary";
+    btn.style.marginTop = "0.6rem";
+    btn.textContent = "Retry";
+    btn.addEventListener("click", onRetry);
+    box.appendChild(btn);
+  }
   return box;
 }
 

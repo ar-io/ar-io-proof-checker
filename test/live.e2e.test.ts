@@ -32,7 +32,7 @@ describe.skipIf(!LIVE)("live: verdicts against real on-chain data", () => {
   it(
     "sample-verifiable.txt → provenance-found, and the report round-trips",
     async () => {
-      const report = await checkProvenance(sample("sample-verifiable.txt"), DEFAULT_GATEWAYS);
+      const report = await checkProvenance(sample("sample-verifiable.txt"), DEFAULT_GATEWAYS, DEFAULT_GATEWAYS);
       expect(report.verdict).toBe("provenance-found");
       expect(report.matches.length).toBeGreaterThan(0);
       expect(DEFAULT_GATEWAYS).toContain(report.gateway);
@@ -48,7 +48,7 @@ describe.skipIf(!LIVE)("live: verdicts against real on-chain data", () => {
   it(
     "sample-demo-tampered.txt → tampered-bytes",
     async () => {
-      const report = await checkProvenance(sample("sample-demo-tampered.txt"), DEFAULT_GATEWAYS);
+      const report = await checkProvenance(sample("sample-demo-tampered.txt"), DEFAULT_GATEWAYS, DEFAULT_GATEWAYS);
       expect(report.verdict).toBe("tampered-bytes");
     },
     NET_TIMEOUT,
@@ -57,7 +57,7 @@ describe.skipIf(!LIVE)("live: verdicts against real on-chain data", () => {
   it(
     "sample-demo-original.txt → provenance-found as registration AND tamper baseline",
     async () => {
-      const report = await checkProvenance(sample("sample-demo-original.txt"), DEFAULT_GATEWAYS);
+      const report = await checkProvenance(sample("sample-demo-original.txt"), DEFAULT_GATEWAYS, DEFAULT_GATEWAYS);
       expect(report.verdict).toBe("provenance-found");
       // The same bytes are the registered content and the known-good baseline
       // of the later tamper — the timeline carries both events.
@@ -72,7 +72,7 @@ describe.skipIf(!LIVE)("live: verdicts against real on-chain data", () => {
   it(
     "sample-no-provenance.txt → no-match (absence, honestly)",
     async () => {
-      const report = await checkProvenance(sample("sample-no-provenance.txt"), DEFAULT_GATEWAYS);
+      const report = await checkProvenance(sample("sample-no-provenance.txt"), DEFAULT_GATEWAYS, DEFAULT_GATEWAYS);
       expect(report.verdict).toBe("no-match");
       expect(report.matches).toHaveLength(0);
     },
@@ -85,7 +85,7 @@ describe.skipIf(!LIVE)("live: verdicts against real on-chain data", () => {
       const report = await checkProvenance(sample("sample-verifiable.txt"), [
         "https://gw-that-does-not-exist.invalid",
         ...DEFAULT_GATEWAYS,
-      ]);
+      ], DEFAULT_GATEWAYS);
       expect(report.verdict).toBe("provenance-found");
       expect(DEFAULT_GATEWAYS).toContain(report.gateway);
     },
@@ -113,6 +113,7 @@ describe.skipIf(!LIVE)("live: registry discovery", () => {
       const fileHash = await sha256OfFile(sample("sample-verifiable.txt"));
       const report = await checkProvenanceForHash(
         fileHash,
+        ["https://gw-that-does-not-exist.invalid"],
         ["https://gw-that-does-not-exist.invalid"],
         // Discover real peers from the anchors — exactly what the app does,
         // just with a deliberately dead configured chain.

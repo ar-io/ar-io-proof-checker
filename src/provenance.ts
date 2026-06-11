@@ -42,8 +42,9 @@ export type Verdict =
 
 export interface ProvenanceReport {
   fileHash: string;
-  gateway: string; // the gateway whose view produced the result (see Discovery)
-  gatewaysQueried: string[]; // everything actually asked, in order (incl. registry peers)
+  gateway: string; // the GraphQL gateway whose view produced the result (see Discovery)
+  graphqlGatewaysQueried: string[]; // GraphQL gateways actually asked, in order
+  dataGatewaysQueried: string[]; // data gateways actually asked, in order
   registryPeersUsed?: string[]; // fallback gateways discovered via /ar-io/peers, if any were queried
   verdict: Verdict;
   matches: Match[]; // verified AND content-bound to the user's bytes
@@ -82,25 +83,32 @@ export interface CheckOptions {
 // request at all.
 export async function checkProvenance(
   file: Blob,
-  gateways: string[] = DEFAULT_GATEWAYS,
+  graphqlGateways: string[] = DEFAULT_GATEWAYS,
+  dataGateways: string[] = DEFAULT_GATEWAYS,
   onProgress?: HashProgress,
   opts?: CheckOptions,
 ): Promise<ProvenanceReport> {
   const fileHash = await sha256OfFile(file, onProgress);
-  return checkProvenanceForHash(fileHash, gateways, opts);
+  return checkProvenanceForHash(fileHash, graphqlGateways, dataGateways, opts);
 }
 
 // Same as checkProvenance but starting from an already-computed hash. Separated
 // so callers (and tests) can drive the lookup/verify path without a File.
 export async function checkProvenanceForHash(
   fileHash: string,
-  gateways: string[] = DEFAULT_GATEWAYS,
+  graphqlGateways: string[] = DEFAULT_GATEWAYS,
+  dataGateways: string[] = DEFAULT_GATEWAYS,
   opts?: CheckOptions,
 ): Promise<ProvenanceReport> {
+  // Mutable copies — registry peers may extend these.
+  let gqlChain = [...graphqlGateways];
+  let dataChain = [...dataGateways];
+
   const base: Omit<ProvenanceReport, "verdict"> = {
     fileHash,
-    gateway: gateways[0] ?? "",
-    gatewaysQueried: [...gateways],
+    gateway: gqlChain[0] ?? "",
+    graphqlGatewaysQueried: gqlChain,
+    dataGatewaysQueried: dataChain,
     matches: [],
     histories: [],
     rejected: [],
@@ -110,7 +118,7 @@ export async function checkProvenanceForHash(
   let txs: Awaited<ReturnType<typeof findEnvelopeTxs>>["txs"] | undefined;
   let discoveryError: unknown;
   try {
-    const discovery = await findEnvelopeTxs(gateways, fileHash);
+    const discovery = await findEnvelopeTxs(gqlChain, fileHash);
     txs = discovery.txs;
     base.gateway = discovery.gateway;
   } catch (e) {
@@ -121,15 +129,21 @@ export async function checkProvenanceForHash(
   // gateway failed, or all were reachable but none knew the bytes) — extend
   // it ONCE with discovered peers and retry discovery over just those. The
   // peers are hints, never trust; their envelopes verify like any other.
+  // Peers extend both chains (ar.io gateways serve GraphQL + /raw/).
   if ((discoveryError !== undefined || txs?.length === 0) && opts?.registryPeers) {
     let fresh: string[] = [];
     try {
-      fresh = (await opts.registryPeers()).filter((g) => !gateways.includes(g));
+      fresh = (await opts.registryPeers()).filter(
+        (g) => !graphqlGateways.includes(g) && !dataGateways.includes(g),
+      );
     } catch {
       // discovery of more gateways is best-effort; keep the original outcome.
     }
     if (fresh.length > 0) {
-      base.gatewaysQueried = [...gateways, ...fresh];
+      gqlChain = [...graphqlGateways, ...fresh];
+      dataChain = [...dataGateways, ...fresh];
+      base.graphqlGatewaysQueried = gqlChain;
+      base.dataGatewaysQueried = dataChain;
       base.registryPeersUsed = fresh;
       try {
         const d2 = await findEnvelopeTxs(fresh, fileHash);
@@ -155,16 +169,12 @@ export async function checkProvenanceForHash(
   const candidatesTruncated = txs.length > MAX_CANDIDATES;
   const candidates = candidatesTruncated ? txs.slice(0, MAX_CANDIDATES) : txs;
 
-  // Fetch from the gateway whose view produced the candidates first (it
-  // certainly indexed them); the rest of the list remains as fallback.
-  const fetchOrder = [base.gateway, ...gateways.filter((g) => g !== base.gateway)];
-
   const matches: Match[] = [];
   const rejected: Rejected[] = [];
 
   for (const tx of candidates) {
     try {
-      const envelope = await fetchEnvelope(fetchOrder, tx.id);
+      const envelope = await fetchEnvelope(dataChain, tx.id);
       const verification = await verifyEnvelope(envelope, fileHash);
       if (verification.ok && verification.contentHashOk && verification.contentRole) {
         matches.push({ txId: tx.id, envelope, verification, role: verification.contentRole });
@@ -185,7 +195,7 @@ export async function checkProvenanceForHash(
   const histories: AssetHistory[] = [];
   for (const id of assetIdentities(matches)) {
     try {
-      histories.push(await buildAssetHistory(fetchOrder, id, fileHash));
+      histories.push(await buildAssetHistory(gqlChain, dataChain, id, fileHash));
     } catch {
       // leave it out; the match itself still carries the verdict.
     }
@@ -233,16 +243,17 @@ function assetIdentities(matches: Match[]): AssetIdentity[] {
 // cryptographically-valid events are kept; the user's hash is re-bound against
 // each so the timeline can highlight which events are about their exact bytes.
 export async function buildAssetHistory(
-  gateways: string[],
+  graphqlGateways: string[],
+  dataGateways: string[],
   id: AssetIdentity,
   fileHash: string,
 ): Promise<AssetHistory> {
-  const refs = await findAssetEventTxs(gateways, id.tenantId, id.agentId, id.assetId);
+  const refs = await findAssetEventTxs(graphqlGateways, id.tenantId, id.agentId, id.assetId);
 
   const events: AssetEvent[] = [];
   for (const ref of refs) {
     try {
-      const envelope = await fetchEnvelope(gateways, ref.id);
+      const envelope = await fetchEnvelope(dataGateways, ref.id);
       const verification = await verifyEnvelope(envelope, fileHash);
       if (!verification.ok) continue; // never put an unverified event in the timeline
       events.push({

@@ -49,9 +49,7 @@
   --serif: "Besley", Georgia, "Times New Roman", serif;
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 body {
   margin: 0;
@@ -69,13 +67,11 @@ body {
   padding: 2.5rem 1.25rem 4rem;
 }
 
-header {
-  margin-bottom: 1.5rem;
-}
+header { margin-bottom: 1.5rem; }
 
 .brand-logo {
   width: 112px;
-  height: 33px; /* preserves the wordmark's 1296:381 (≈3.40:1) ratio */
+  height: 33px;
   background-image: url("./brand/ario-full-black.svg");
   background-repeat: no-repeat;
   background-position: left center;
@@ -97,6 +93,8 @@ h1 {
   color: var(--muted);
   margin: 0 0 1.5rem;
 }
+
+/* --- Input area --------------------------------------------------------- */
 
 .dropzone {
   border: 2px dashed var(--hairline);
@@ -132,9 +130,18 @@ h1 {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  margin: 1rem 0 0;
+  margin: 0.6rem 0 0;
   font-size: 0.9rem;
   color: var(--muted);
+}
+
+.gateway-row span {
+  min-width: 130px;
+  flex-shrink: 0;
+}
+
+.gateway-group {
+  margin-top: 0.5rem;
 }
 
 .gateway-row input {
@@ -146,6 +153,7 @@ h1 {
   color: var(--text);
   font-family: var(--mono);
   font-size: 0.85rem;
+  transition: border-color 0.15s;
 }
 
 .gateway-row input:focus {
@@ -153,36 +161,112 @@ h1 {
   border-color: var(--primary);
 }
 
-.reverify {
-  margin-top: 0.9rem;
-  font-size: 0.85rem;
-  color: var(--muted);
+/* Mode tabs */
+.mode-tabs {
+  display: flex;
+  gap: 0;
+  margin: 0 0 1rem;
+  border-bottom: 2px solid var(--hairline);
 }
 
-.reverify summary {
+.tab {
+  padding: 0.55rem 1.1rem;
+  border: none;
+  background: none;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--muted);
   cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.tab:hover { color: var(--text); }
+
+.tab-active {
   color: var(--primary);
+  border-bottom-color: var(--primary);
 }
 
-.reverify input[type="file"] {
-  margin-top: 0.5rem;
+.panel-desc {
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: 0.9rem;
+  margin: 0 0 0.75rem;
+  line-height: 1.5;
 }
 
-.results {
-  margin-top: 1.5rem;
+/* Styled file input for re-verify panel */
+.file-input-wrap {
+  position: relative;
+  display: inline-block;
 }
+
+.file-input-wrap input[type="file"] {
+  position: absolute;
+  left: 0; top: 0;
+  width: 100%; height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.file-input-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid var(--primary);
+  background: var(--white);
+  color: var(--primary);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.file-input-label:hover { background: var(--lavender); }
+
+/* --- Results ------------------------------------------------------------ */
+
+.results { margin-top: 1.5rem; }
 
 .loading {
   color: var(--muted);
-  padding: 1rem;
+  padding: 1rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.loading::before {
+  content: "";
+  display: inline-block;
+  width: 14px; height: 14px;
+  border: 2px solid var(--hairline);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Summary metadata card */
+.summary-card {
+  margin: 0.6rem 0 0.4rem;
+  padding: 0.3rem 0 0.5rem;
+  border-bottom: 1px solid var(--hairline);
 }
 
 .actions {
   display: flex;
   gap: 0.6rem;
-  margin: 0.9rem 0 0.3rem;
+  margin: 1.25rem 0 0;
+  padding-top: 1rem;
+  border-top: 1px solid var(--hairline);
   flex-wrap: wrap;
 }
 
@@ -196,6 +280,7 @@ h1 {
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
 }
 
 .btn:hover {
@@ -208,12 +293,10 @@ h1 {
   color: var(--primary);
 }
 
-.btn-secondary:hover {
-  background: var(--lavender);
-}
+.btn-secondary:hover { background: var(--lavender); }
 
-/* Verdict banners. Affirmative = Primary on Lavender; danger = alert red;
-   neutral (no-match / lookup error) = muted on Card. */
+/* --- Verdict banners ---------------------------------------------------- */
+
 .verdict {
   display: flex;
   align-items: center;
@@ -225,9 +308,7 @@ h1 {
   font-weight: 700;
 }
 
-.verdict-icon {
-  font-size: 1.4rem;
-}
+.verdict-icon { font-size: 1.4rem; }
 
 .verdict-ok {
   border-color: var(--primary);
@@ -239,38 +320,36 @@ h1 {
   background: var(--alert-tint);
   color: var(--alert);
 }
-.verdict-none {
-  border-color: var(--hairline);
-  background: var(--card);
-  color: var(--muted);
-}
-.verdict-err {
+.verdict-none, .verdict-err {
   border-color: var(--hairline);
   background: var(--card);
   color: var(--muted);
 }
 
+/* --- Key-value rows ----------------------------------------------------- */
+
 .kv {
   display: flex;
   gap: 0.75rem;
-  padding: 0.3rem 0;
+  padding: 0.25rem 0;
   font-size: 0.9rem;
   flex-wrap: wrap;
 }
 
 .kv-label {
   color: var(--muted);
-  min-width: 150px;
+  min-width: 120px;
+  flex-shrink: 0;
 }
 
-.kv-value {
-  word-break: break-all;
-}
+.kv-value { word-break: break-all; }
 
 .mono {
   font-family: var(--mono);
   font-size: 0.82rem;
 }
+
+/* --- Asset match cards -------------------------------------------------- */
 
 .match {
   margin-top: 1rem;
@@ -283,52 +362,31 @@ h1 {
 .match-head {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  margin-bottom: 0.6rem;
+  gap: 0.2rem;
+  margin-bottom: 0.5rem;
 }
 
-.event-type {
+.asset-id {
   font-family: var(--mono);
   font-weight: 700;
-  color: var(--primary);
-}
-
-.match-role {
-  color: var(--muted);
-  font-size: 0.88rem;
-}
-
-.checks {
-  list-style: none;
-  padding: 0;
-  margin: 0.6rem 0;
-}
-
-.checks li {
-  padding: 0.15rem 0;
   font-size: 0.9rem;
-}
-
-.check-ok {
   color: var(--primary);
 }
-.check-fail {
-  color: var(--alert);
-}
 
-.tx-link {
-  color: var(--primary);
+.match-meta {
+  color: var(--muted);
+  font-size: 0.85rem;
 }
 
 .continuity {
   font-size: 0.85rem;
-  margin: 0.3rem 0 0.7rem;
+  margin: 0 0 0.5rem;
   color: var(--muted);
 }
 
-.continuity.ok {
-  color: var(--primary);
-}
+.continuity-linked { color: var(--primary); }
+
+/* --- Timeline ----------------------------------------------------------- */
 
 .timeline {
   list-style: none;
@@ -339,65 +397,85 @@ h1 {
 
 .event {
   position: relative;
-  padding: 0.5rem 0 0.5rem 1rem;
-  margin-left: 0.25rem;
+  padding: 0.45rem 0 0.45rem 1.1rem;
+  margin-left: 0;
 }
 
+/* Dot color driven by matchedRole: neutral=grey, ok=purple, warn=red */
 .event::before {
   content: "";
   position: absolute;
-  left: -7px;
-  top: 0.75rem;
-  width: 10px;
-  height: 10px;
+  left: -6px;
+  top: 0.65rem;
+  width: 10px; height: 10px;
   border-radius: 50%;
-  background: var(--muted);
+  background: var(--hairline);
 }
 
-.event-ok::before {
-  background: var(--primary);
-}
-.event-warn::before {
-  background: var(--alert);
-}
+.event-ok::before { background: var(--primary); }
+.event-warn::before { background: var(--alert); }
+.event-neutral::before { background: var(--muted); }
 
 .event-line {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 0.5rem;
+  gap: 0.4rem 0.5rem;
 }
 
-.event-type-sm {
-  font-family: var(--mono);
-  font-weight: 700;
+.event-label {
+  font-weight: 600;
+  font-size: 0.9rem;
 }
 
 .event-when {
   color: var(--muted);
-  font-size: 0.82rem;
+  font-size: 0.8rem;
 }
 
-.you-badge {
-  font-size: 0.78rem;
-  font-weight: 700;
+.verified-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--primary);
+  letter-spacing: 0.02em;
+}
+
+.verified-badge::before { content: "✓ "; }
+
+.role-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 0.05rem 0.5rem;
+  white-space: nowrap;
+}
+
+.role-badge-ok {
   color: var(--primary);
   background: var(--lavender);
   border: 1px solid var(--primary);
-  border-radius: 999px;
-  padding: 0.05rem 0.5rem;
 }
 
-.event-checks {
-  display: block;
-  font-size: 0.78rem;
-  margin: 0.15rem 0;
-  color: var(--muted);
+.role-badge-warn {
+  color: var(--alert);
+  background: var(--alert-tint);
+  border: 1px solid var(--alert);
 }
 
 .event .tx-link {
-  font-size: 0.78rem;
+  display: block;
+  font-size: 0.75rem;
+  margin-top: 0.1rem;
 }
+
+.tx-link {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.tx-link:hover { text-decoration: underline; }
+
+/* --- Disclaimers -------------------------------------------------------- */
 
 .disclaimer {
   margin-top: 1rem;
@@ -405,22 +483,81 @@ h1 {
   border-left: 3px solid var(--primary);
   background: var(--lavender-soft);
   color: var(--text);
-  font-size: 0.9rem;
+  font-size: 0.88rem;
+  line-height: 1.5;
   border-radius: 0 8px 8px 0;
 }
 
+.disclaimer-alert {
+  border-left-color: var(--alert);
+  background: var(--alert-tint);
+}
+
+/* --- Explain / error / no-match ----------------------------------------- */
+
 .explain {
   margin-top: 1rem;
+  padding: 0.8rem 1rem;
   font-size: 0.95rem;
+  background: var(--card);
+  border-radius: 10px;
 }
+
+.explain p { margin: 0 0 0.4rem; }
 
 .explain ul {
   color: var(--muted);
+  margin: 0.4rem 0 0;
+  padding-left: 1.5rem;
 }
 
-.muted {
-  color: var(--muted);
+.explain li { margin: 0.3rem 0; }
+
+.error-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.6rem;
 }
+
+.muted { color: var(--muted); }
+
+/* --- Re-import verification table --------------------------------------- */
+
+.reimport-table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.8rem 0;
+  font-size: 0.85rem;
+}
+
+.reimport-table th {
+  text-align: left;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 2px solid var(--hairline);
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.reimport-table td {
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid var(--hairline);
+  vertical-align: middle;
+}
+
+.reimport-row-fail { background: var(--alert-tint); }
+
+.check-pass { color: var(--primary); font-weight: 600; }
+.check-fail { color: var(--alert); font-weight: 600; }
+
+/* --- WASM Go-verify ----------------------------------------------------- */
+
+.go-verify { margin-top: 0.5rem; }
+
+.go-verify-results { margin-top: 0.4rem; font-size: 0.85rem; }
+
+/* --- Rejected candidates ------------------------------------------------ */
 
 .rejected {
   margin-top: 1.25rem;
@@ -430,7 +567,11 @@ h1 {
 .rejected summary {
   cursor: pointer;
   color: var(--muted);
+  padding: 0.3rem 0;
 }
+
+.rejected > p,
+.rejected > .rejected-row { padding-left: 0.5rem; }
 
 .rejected-row {
   display: flex;
@@ -438,6 +579,75 @@ h1 {
   padding: 0.25rem 0;
   flex-wrap: wrap;
 }
+
+/* --- Session history ---------------------------------------------------- */
+
+.history-section { margin-top: 1.5rem; }
+
+.history-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
+  margin: 0 0 0.4rem;
+}
+
+.history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.history-entry {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  margin-bottom: 0.35rem;
+  cursor: pointer;
+  font-size: 0.82rem;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.history-entry:hover,
+.history-entry-active {
+  border-color: var(--primary);
+  background: var(--lavender-soft);
+}
+
+.history-verdict {
+  font-weight: 700;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.history-verdict-ok { color: var(--primary); }
+.history-verdict-warn { color: var(--alert); }
+.history-verdict-none, .history-verdict-err { color: var(--muted); }
+
+.history-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-hash {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.history-time {
+  color: var(--muted);
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+
+/* --- Footer ------------------------------------------------------------- */
 
 footer {
   margin-top: 2.5rem;
@@ -447,6 +657,4 @@ footer {
   color: var(--muted);
 }
 
-footer strong {
-  color: var(--text);
-}
+footer strong { color: var(--text); }

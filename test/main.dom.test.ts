@@ -31,7 +31,8 @@ function noMatch(fileHash: string): ProvenanceReport {
   return {
     fileHash,
     gateway: "https://gw.example",
-    gatewaysQueried: ["https://gw.example"],
+    graphqlGatewaysQueried: ["https://gw.example"],
+    dataGatewaysQueried: ["https://gw.example"],
     verdict: "no-match",
     matches: [],
     histories: [],
@@ -48,11 +49,19 @@ const tick = () => new Promise((r) => setTimeout(r, 0));
 
 beforeAll(async () => {
   document.body.innerHTML = `
-    <div id="dropzone" tabindex="0" role="button"></div>
-    <input id="file-input" type="file" />
-    <input id="gateway" type="text" />
-    <input id="report-input" type="file" />
-    <div id="results"></div>`;
+    <button id="tab-check" class="tab tab-active" role="tab" aria-selected="true" aria-controls="panel-check"></button>
+    <button id="tab-verify" class="tab" role="tab" aria-selected="false" aria-controls="panel-verify"></button>
+    <div id="panel-check" class="panel" role="tabpanel">
+      <div id="dropzone" tabindex="0" role="button"></div>
+      <input id="file-input" type="file" />
+      <input id="graphql-gateway" type="text" />
+      <input id="data-gateway" type="text" />
+    </div>
+    <div id="panel-verify" class="panel" role="tabpanel" hidden>
+      <input id="report-input" type="file" />
+    </div>
+    <div id="results"></div>
+    <div id="history"></div>`;
   await import("../src/main");
 });
 
