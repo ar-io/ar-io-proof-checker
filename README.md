@@ -97,7 +97,7 @@ Depends on [`ar-io-agent`](../ar-io-agent) **for specification only — no code 
 The verifier here is an **independent implementation** of the same algorithm,
 packaged as the [`@ar.io/proof`](packages/proof/) npm workspace (the TypeScript
 sibling of the Python [`ar-io-proof`](https://github.com/ar-io/ar-io-proof) kernel;
-MIT; not yet published). That is deliberate: a second, conformance-tested
+MIT; **published 2026-06-11**). That is deliberate: a second, conformance-tested
 implementation is what demonstrates the product's core claim — auditor-independent
 verification with no ar.io code in the trust path. Conformance is enforced in CI:
 the verifier must reproduce every test vector byte-for-byte, or the build fails.

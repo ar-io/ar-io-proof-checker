@@ -17,9 +17,9 @@ jobs:
           node-version: "20"
           cache: "npm"
       - run: npm ci
+      - name: "@ar.io/proof kernel build first — exports point at dist/ since the publish commit"
+        run: npm run build:proof
       - run: npm run typecheck
       - name: Conformance + verifier tests (vectors must match byte-for-byte)
         run: npm run test
-      - name: "@ar-io/proof package builds standalone (dist ESM + declarations)"
-        run: npm run build:proof
       - run: npm run build
