@@ -84,7 +84,7 @@ body {
 
 .app {
   flex: 1;
-  max-width: 680px;
+  max-width: 840px;
   width: 100%;
   margin: 0 auto;
   padding: 2.5rem 1.5rem 3rem;
@@ -728,7 +728,7 @@ h1 {
 }
 
 .footer-inner {
-  max-width: 680px;
+  max-width: 840px;
   margin: 0 auto;
   padding: 1.25rem 1.5rem;
   display: flex;
