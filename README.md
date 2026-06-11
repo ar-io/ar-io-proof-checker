@@ -83,24 +83,21 @@ trust-path dependency; a hash bug can only cause a false negative, never a false
 "verified"), so memory stays flat for multi-GB models. Nothing is refused on size;
 large files get an honest time advisory and a live progress line instead.
 
-## Relationship to ar-io-agent
+## Relationship to the stack
 
-Depends on [`ar-io-agent`](../ar-io-agent) **for specification only — no code dependency**:
+The verifier is **`@ar.io/proof`** ([npm](https://www.npmjs.com/package/@ar.io/proof)) — an
+ordinary dependency. It's the TypeScript verification kernel, homed in
+[`ar-io-proof`](https://github.com/ar-io/ar-io-proof) (the stack's polyglot verification home,
+alongside the Python kernel, the family specs, and the authoritative corpus). Using a *published,
+independently conformance-tested* kernel — not bundled app code — is what demonstrates the
+product's core claim: auditor-independent verification with no ar.io code in the trust path.
+Conformance (every kernel reproduces the `test-vectors-v1.0` corpus byte-for-byte) is enforced in
+`ar-io-proof`'s CI; this app just consumes the result.
 
-- the envelope schema (`docs/artifact.md`),
-- the conformance **test vectors** (the full `test-vectors-v1.0` corpus, vendored
-  under [`packages/proof/test-vectors/`](packages/proof/test-vectors/) with per-file
-  SHA gating — see that directory's `VENDORING.md`),
-- the `Asset-Hash` / `Observed-Hash` / `Baseline-Hash` tag convention
-  (`docs/artifact.md` §11), introduced for exactly this tool.
-
-The verifier here is an **independent implementation** of the same algorithm,
-packaged as the [`@ar.io/proof`](packages/proof/) npm workspace (the TypeScript
-sibling of the Python [`ar-io-proof`](https://github.com/ar-io/ar-io-proof) kernel;
-MIT; **published 2026-06-11**). That is deliberate: a second, conformance-tested
-implementation is what demonstrates the product's core claim — auditor-independent
-verification with no ar.io code in the trust path. Conformance is enforced in CI:
-the verifier must reproduce every test vector byte-for-byte, or the build fails.
+The app also depends on [`ar-io-agent`](https://github.com/ar-io/ar-io-agent) **for specification
+only — no code dependency**: the envelope schema (`docs/artifact.md`) and the `Asset-Hash` /
+`Observed-Hash` / `Baseline-Hash` tag convention (`docs/artifact.md` §11), introduced for exactly
+this tool.
 
 **And you can cross-check the implementations against each other, live.** The
 "Verify with Go reference (WASM)" button re-verifies the matched envelopes with a
@@ -146,10 +143,12 @@ caveats.
 
 ## License
 
-BSL 1.1 with an MIT carve-out for [`packages/proof/`](packages/proof) (the
-TypeScript verification kernel, publishing as `@ar.io/proof`) — see
-[LICENSE](LICENSE). Making the *verifier* open is the whole point: anyone can
-audit and ship a conformant verifier under MIT, without BSL terms touching
-their code. The BSL covers the web application around it (production use
-permitted; offering it as a hosted service to third parties requires a
-commercial license), and converts to MIT two years after each release.
+BSL 1.1 — see [LICENSE](LICENSE). The BSL covers this web application (production
+use permitted; offering it as a hosted service to third parties requires a
+commercial license), and converts to MIT two years after each release. Making the
+*verifier* open is still the whole point — but the verifier now lives outside this
+repo as the MIT-licensed [`@ar.io/proof`](https://www.npmjs.com/package/@ar.io/proof)
+package (source in [`ar-io-proof`](https://github.com/ar-io/ar-io-proof)), so anyone
+can audit and ship a conformant verifier under MIT with no BSL terms touching their
+code. (The earlier in-repo MIT carve-out for `packages/proof/` is moot now that the
+kernel has moved out.)
