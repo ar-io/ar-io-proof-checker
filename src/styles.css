@@ -36,7 +36,10 @@
   --text: var(--body-gray);
   --muted: rgba(74, 74, 88, 0.6);
   --hairline: var(--subtle-border);
-  --lavender-soft: rgba(223, 214, 247, 0.35);
+
+  /* card shadow for white cards on the lavender gradient — per brand kit:
+     "Use white cards with subtle purple borders or shadows" */
+  --card-shadow: 0 1px 3px rgba(84, 39, 200, 0.06), 0 1px 2px rgba(84, 39, 200, 0.04);
 
   /* functional (not in brand kit — single danger color) */
   --alert: #cf222e;
@@ -149,19 +152,21 @@ h1 {
 /* ═══ Dropzone ═════════════════════════════════════════════════════════════ */
 
 .dropzone {
-  border: 2px dashed var(--hairline);
+  border: 2px dashed var(--subtle-border);
   border-radius: var(--radius-card);
   padding: 2.5rem 1.5rem;
   text-align: center;
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
+  background: var(--white);
+  box-shadow: var(--card-shadow);
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .dropzone:hover,
 .dropzone:focus,
 .dropzone.dragging {
   border-color: var(--primary);
-  background: var(--lavender-soft);
+  box-shadow: 0 2px 8px rgba(84, 39, 200, 0.1);
   outline: none;
 }
 
@@ -355,9 +360,24 @@ h1 {
 .verdict-icon { width: 1.3rem; height: 1.3rem; flex-shrink: 0; }
 .inline-icon { width: 1em; height: 1em; vertical-align: -0.15em; }
 
-.verdict-ok { background: var(--lavender-soft); color: var(--primary); }
-.verdict-warn { background: var(--alert-tint); color: var(--alert); }
-.verdict-none, .verdict-err { background: var(--lavender-wash); color: var(--muted); }
+.verdict-ok {
+  background: var(--white);
+  color: var(--primary);
+  border: 1px solid var(--lavender);
+  box-shadow: var(--card-shadow);
+}
+.verdict-warn {
+  background: var(--white);
+  color: var(--alert);
+  border: 1px solid rgba(207, 34, 46, 0.2);
+  box-shadow: var(--card-shadow);
+}
+.verdict-none, .verdict-err {
+  background: var(--white);
+  color: var(--muted);
+  border: 1px solid var(--subtle-border);
+  box-shadow: var(--card-shadow);
+}
 
 /* ═══ Summary ══════════════════════════════════════════════════════════════ */
 
@@ -432,8 +452,10 @@ h1 {
 .match {
   margin-top: 1rem;
   padding: 0.75rem 1rem;
-  border: 1px solid var(--hairline);
+  background: var(--white);
+  border: 1px solid var(--subtle-border);
   border-radius: var(--radius-card);
+  box-shadow: var(--card-shadow);
 }
 
 .match-head {
@@ -535,12 +557,12 @@ h1 {
 
 .role-badge-ok {
   color: var(--primary);
-  background: var(--lavender-soft);
+  background: var(--lavender);
 }
 
 .role-badge-warn {
-  color: var(--alert);
-  background: var(--alert-tint);
+  color: var(--white);
+  background: var(--alert);
 }
 
 .event .tx-link {
@@ -562,23 +584,28 @@ h1 {
   margin-top: 1rem;
   padding: 0.65rem 0.85rem;
   border-left: 3px solid var(--primary);
-  background: var(--lavender-wash);
+  background: var(--white);
   color: var(--text);
   font-size: var(--text-sm);
   line-height: 1.5;
   border-radius: 0 8px 8px 0;
+  box-shadow: var(--card-shadow);
 }
 
 .disclaimer-alert {
   border-left-color: var(--alert);
-  background: var(--alert-tint);
 }
 
 /* ═══ Explain (no-match / error) ═══════════════════════════════════════════ */
 
 .explain {
   margin-top: 1rem;
+  padding: 0.75rem 1rem;
   font-size: var(--text-base);
+  background: var(--white);
+  border: 1px solid var(--subtle-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--card-shadow);
 }
 
 .explain p { margin-bottom: 0.35rem; }
@@ -623,7 +650,7 @@ h1 {
   vertical-align: middle;
 }
 
-.reimport-row-fail { background: var(--alert-tint); }
+.reimport-row-fail { background: rgba(207, 34, 46, 0.05); }
 
 .check-pass { color: var(--primary); font-weight: 600; }
 .check-fail { color: var(--alert); font-weight: 600; }
@@ -674,18 +701,19 @@ h1 {
   align-items: center;
   gap: 0.5rem;
   padding: 0.4rem 0.5rem;
-  border: 1px solid var(--hairline);
+  background: var(--white);
+  border: 1px solid var(--subtle-border);
   border-radius: 10px;
   margin-bottom: 0.3rem;
   cursor: pointer;
   font-size: var(--text-sm);
-  transition: border-color 0.15s, background 0.15s;
+  box-shadow: var(--card-shadow);
+  transition: border-color 0.15s;
 }
 
 .history-entry:hover,
 .history-entry-active {
   border-color: var(--primary);
-  background: var(--lavender-soft);
 }
 
 .history-verdict {
