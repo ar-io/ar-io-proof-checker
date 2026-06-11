@@ -10,7 +10,14 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
-import { bytesToHex, sha256Hex, utf8 } from "../src/crypto";
+import { bytesToHex, hexToBytes, sha256Hex, utf8 } from "../src/crypto";
+import {
+  EMPTY_TREE_ROOT_HEX,
+  auditPath,
+  leafHash,
+  merkleRoot,
+  verifyInclusion,
+} from "../src/merkle";
 import { contentHashes, jcs, verifyEnvelope } from "../src/verifier";
 import type { Envelope } from "../src/types";
 
@@ -129,4 +136,84 @@ describe("envelope conformance vs ar-io-agent test-vectors", () => {
       });
     });
   }
+});
+
+// --- RFC 9162 Merkle conformance (the 7 merkle-tree-* vectors) --------------
+
+interface MerkleVector {
+  vector_id: string;
+  expected_root_hex: string;
+  leaf_count: number;
+  leaves: { leaf_hash_hex: string; leaf_object: Record<string, unknown> }[];
+  inclusion_proofs: { leaf_index: number; audit_path_hex: string[] }[];
+}
+
+function loadMerkleVectors(): MerkleVector[] {
+  return readdirSync(vectorsDir)
+    .filter((f) => f.startsWith("merkle-tree-") && f.endsWith(".json"))
+    .sort()
+    .map((f) => JSON.parse(readFileSync(`${vectorsDir}${f}`, "utf8")) as MerkleVector);
+}
+
+describe("merkle conformance vs ar-io-agent test-vectors", () => {
+  const merkleVectors = loadMerkleVectors();
+
+  it("has all 7 merkle vectors; the empty tree pins SHA-256('')", () => {
+    expect(merkleVectors).toHaveLength(7);
+    const empty = merkleVectors.find((v) => v.leaf_count === 0)!;
+    expect(empty.expected_root_hex).toBe(EMPTY_TREE_ROOT_HEX);
+  });
+
+  for (const v of loadMerkleVectors()) {
+    describe(v.vector_id, () => {
+      const hashes = v.leaves.map((l) => hexToBytes(l.leaf_hash_hex));
+
+      it("leaf hashes reproduce from JCS(leaf_object) with the 0x00 prefix", async () => {
+        for (const leaf of v.leaves) {
+          expect(bytesToHex(await leafHash(utf8(jcs(leaf.leaf_object))))).toBe(leaf.leaf_hash_hex);
+        }
+      });
+
+      it("the root reconstructs byte-for-byte", async () => {
+        expect(bytesToHex(await merkleRoot(hashes))).toBe(v.expected_root_hex);
+      });
+
+      it("pinned inclusion proofs verify, reproduce, and fail for the wrong leaf", async () => {
+        const root = hexToBytes(v.expected_root_hex);
+        for (const proof of v.inclusion_proofs) {
+          const i = proof.leaf_index;
+          const pinned = proof.audit_path_hex.map(hexToBytes);
+          // The pinned audit path verifies...
+          expect(await verifyInclusion(hashes[i], i, v.leaf_count, pinned, root)).toBe(true);
+          // ...and our generator reproduces it byte-for-byte.
+          expect((await auditPath(i, hashes)).map(bytesToHex)).toEqual(proof.audit_path_hex);
+          // Negative: the same path must not verify for a different leaf index.
+          if (v.leaf_count > 1) {
+            const other = (i + 1) % v.leaf_count;
+            expect(await verifyInclusion(hashes[other], other, v.leaf_count, pinned, root)).toBe(false);
+          }
+        }
+      });
+    });
+  }
+
+  it("verifyInclusion is fail-closed on malformed inputs (never throws)", async () => {
+    const v = loadMerkleVectors().find((x) => x.leaf_count === 7)!;
+    const hashes = v.leaves.map((l) => hexToBytes(l.leaf_hash_hex));
+    const root = hexToBytes(v.expected_root_hex);
+    const good = v.inclusion_proofs[0];
+    const pinned = good.audit_path_hex.map(hexToBytes);
+    // Out-of-range / inconsistent tree shapes.
+    expect(await verifyInclusion(hashes[0], -1, 7, pinned, root)).toBe(false);
+    expect(await verifyInclusion(hashes[0], 7, 7, pinned, root)).toBe(false);
+    expect(await verifyInclusion(hashes[0], 0, 0, [], root)).toBe(false);
+    // Path longer than the tree depth.
+    expect(await verifyInclusion(hashes[0], good.leaf_index, 7, [...pinned, ...pinned], root)).toBe(false);
+    // Truncated path.
+    expect(await verifyInclusion(hashes[good.leaf_index], good.leaf_index, 7, pinned.slice(0, 1), root)).toBe(false);
+  });
+
+  it("auditPath rejects an out-of-range index", async () => {
+    await expect(auditPath(5, [new Uint8Array(32)])).rejects.toThrow(/out of range/);
+  });
 });

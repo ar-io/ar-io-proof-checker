@@ -12,5 +12,13 @@
 // gateway/transport concerns are consumer-layer logic composed above it.
 
 export { contentHashes, jcs, specVersionSupported, verifyEnvelope } from "./verifier";
-export { bytesToHex, ed25519Verify, hexToBytes, sha256Hex, utf8 } from "./crypto";
+export { bytesToHex, ed25519Verify, hexToBytes, sha256Bytes, sha256Hex, utf8 } from "./crypto";
+export {
+  EMPTY_TREE_ROOT_HEX,
+  auditPath,
+  leafHash,
+  merkleRoot,
+  nodeHash,
+  verifyInclusion,
+} from "./merkle";
 export type { ContentRole, Envelope, Subject, VerificationResult } from "./types";

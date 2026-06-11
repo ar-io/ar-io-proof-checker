@@ -40,9 +40,12 @@ export function utf8(s: string): Uint8Array {
   return new TextEncoder().encode(s);
 }
 
+export async function sha256Bytes(bytes: Uint8Array): Promise<Uint8Array> {
+  return new Uint8Array(await crypto.subtle.digest("SHA-256", asBufferSource(bytes)));
+}
+
 export async function sha256Hex(bytes: Uint8Array): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", asBufferSource(bytes));
-  return bytesToHex(new Uint8Array(digest));
+  return bytesToHex(await sha256Bytes(bytes));
 }
 
 // Verify an Ed25519 signature. Inputs are hex (signature, public key) as they

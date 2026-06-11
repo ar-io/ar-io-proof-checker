@@ -15,6 +15,11 @@ The verification primitives for the envelope family specified in
   scope) plus the optional content-hash bind
 - **`contentHashes(env)`** — which payload hash(es) an envelope commits to, by
   event type (the reverse-provenance join keys)
+- **RFC 9162 binary Merkle tree** (`leafHash`, `nodeHash`, `merkleRoot`,
+  `auditPath`, `verifyInclusion`, `EMPTY_TREE_ROOT_HEX`) — §2.1 domain
+  separation, largest-power-of-two split (not the Bitcoin duplicate-leaf
+  variant), conformance-gated against the corpus's 7 Merkle vectors; parity
+  with the Python kernel's `ario_proof.merkle`
 
 This is the TypeScript sibling of the Python [`ar-io-proof`](https://github.com/ar-io/ar-io-proof)
 kernel and the Go reference (`ar-io-agent/pkg/proof`). All three are independent
