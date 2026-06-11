@@ -55,6 +55,21 @@ describe.skipIf(!LIVE)("live: verdicts against real on-chain data", () => {
   );
 
   it(
+    "sample-demo-original.txt → provenance-found as registration AND tamper baseline",
+    async () => {
+      const report = await checkProvenance(sample("sample-demo-original.txt"), DEFAULT_GATEWAYS);
+      expect(report.verdict).toBe("provenance-found");
+      // The same bytes are the registered content and the known-good baseline
+      // of the later tamper — the timeline carries both events.
+      const events = report.histories[0]?.events ?? [];
+      expect(events.length).toBeGreaterThanOrEqual(2);
+      expect(events.map((e) => e.envelope.event_type)).toContain("tamper_detected");
+      expect(events.map((e) => e.envelope.event_type)).toContain("asset_registered");
+    },
+    NET_TIMEOUT,
+  );
+
+  it(
     "sample-no-provenance.txt → no-match (absence, honestly)",
     async () => {
       const report = await checkProvenance(sample("sample-no-provenance.txt"), DEFAULT_GATEWAYS);
