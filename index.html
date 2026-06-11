@@ -47,28 +47,16 @@
             Gateways are the ar.io nodes this tool queries. The defaults work for most checks.
             Change them only if you need to query a specific node.
           </p>
-          <div class="gateway-group">
-            <label class="gateway-row">
-              <span>Search</span>
-              <input
-                id="graphql-gateway"
-                type="text"
-                spellcheck="false"
-                autocomplete="off"
-                title="Gateways used to search for provenance records. Comma-separated, tried in order."
-              />
-            </label>
-            <label class="gateway-row">
-              <span>Data</span>
-              <input
-                id="data-gateway"
-                type="text"
-                spellcheck="false"
-                autocomplete="off"
-                title="Gateways used to download the actual provenance records. Comma-separated, tried in order."
-              />
-            </label>
-          </div>
+          <label class="gateway-row">
+            <span>Gateways</span>
+            <input
+              id="gateway"
+              type="text"
+              spellcheck="false"
+              autocomplete="off"
+              title="Comma-separated, tried in order. Used for both searching and fetching records."
+            />
+          </label>
         </details>
       </div>
 

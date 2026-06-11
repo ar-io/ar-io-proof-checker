@@ -22,7 +22,7 @@ import type { Envelope } from "./types";
 // the ar.io registry (see fetchRegistryPeers) — but these anchors are always
 // queried before any registry-discovered peer, so a poisoned peer list can
 // never preempt them.
-export const DEFAULT_GATEWAYS = ["https://turbo-gateway.com", "https://arweave.net"];
+export const DEFAULT_GATEWAYS = ["https://turbo-gateway.com"];
 
 // How many registry-discovered peers may extend the fallback chain.
 export const REGISTRY_PEER_LIMIT = 4;
