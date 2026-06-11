@@ -1,6 +1,6 @@
 {
   "name": "@ar.io/proof",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "TypeScript kernel of the ar.io verification stack: RFC 8785 (JCS) canonicalization, SHA-256, and Ed25519 verification for Verifiable Event Envelopes (ario.agent/v1 profile). Conformance-gated byte-for-byte against the test-vectors-v1.0 corpus.",
   "license": "MIT",
   "type": "module",
