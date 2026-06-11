@@ -1,4 +1,6 @@
-/* ar.io brand styling — brand-kit/agents.json, self-hosted fonts, no CDN. */
+/* ar.io brand styling — source of truth: /brand-kit/agents.json v2026-03-30
+ * Colors, type, radii, and rules applied exactly. Extended palette used where
+ * the core five are silent (body text, borders, section backgrounds). */
 
 @font-face {
   font-family: "Besley";
@@ -17,32 +19,52 @@
 }
 
 :root {
+  /* brand-kit core */
   --primary: #5427c8;
   --lavender: #dfd6f7;
   --black: #23232d;
   --white: #ffffff;
   --card: #f0f0f0;
+
+  /* brand-kit extended */
+  --body-gray: #4a4a58;
+  --subtle-border: #e6e4ef;
+  --lavender-wash: #f1ecff;
+
+  /* derived */
   --primary-press: #401d97;
-  --text: var(--black);
-  --muted: rgba(35, 35, 45, 0.55);
-  --hairline: rgba(35, 35, 45, 0.1);
-  --lavender-soft: rgba(223, 214, 247, 0.4);
+  --text: var(--body-gray);
+  --muted: rgba(74, 74, 88, 0.6);
+  --hairline: var(--subtle-border);
+  --lavender-soft: rgba(223, 214, 247, 0.35);
+
+  /* functional (not in brand kit — single danger color) */
   --alert: #cf222e;
   --alert-tint: rgba(207, 34, 46, 0.06);
 
+  /* fonts */
   --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --sans: "Plus Jakarta Sans", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   --serif: "Besley", Georgia, "Times New Roman", serif;
 
-  /* type scale: 3 sizes only */
-  --text-sm: 0.8125rem;   /* 13px */
-  --text-base: 0.875rem;  /* 14px */
-  --text-lg: 1.125rem;    /* 18px */
+  /* type scale */
+  --text-sm: 0.8125rem;
+  --text-base: 0.875rem;
+  --text-lg: 1.125rem;
+
+  /* radii per brand kit */
+  --radius-card: 20px;
+  --radius-pill: 9999px;
 }
 
 * { box-sizing: border-box; margin: 0; }
 
+html { height: 100%; }
+
 body {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
   background: var(--white);
   color: var(--text);
   font-family: var(--sans);
@@ -54,7 +76,9 @@ body {
 /* ═══ Layout ═══════════════════════════════════════════════════════════════ */
 
 .app {
+  flex: 1;
   max-width: 680px;
+  width: 100%;
   margin: 0 auto;
   padding: 2.5rem 1.5rem 3rem;
 }
@@ -74,16 +98,15 @@ h1 {
   font-family: var(--serif);
   font-weight: 800;
   font-size: 1.75rem;
-  line-height: 1.15;
-  letter-spacing: -0.01em;
+  line-height: 1.08;
+  letter-spacing: -0.025em;
   color: var(--black);
-  margin-bottom: 0.35rem;
+  margin-bottom: 0.4rem;
 }
 
 .tagline {
   color: var(--muted);
   font-size: var(--text-base);
-  margin-bottom: 0;
 }
 
 /* ═══ Tabs ═════════════════════════════════════════════════════════════════ */
@@ -109,7 +132,7 @@ h1 {
   transition: color 0.15s, border-color 0.15s;
 }
 
-.tab:hover { color: var(--text); }
+.tab:hover { color: var(--black); }
 
 .tab-active {
   color: var(--primary);
@@ -120,7 +143,7 @@ h1 {
 
 .dropzone {
   border: 2px dashed var(--hairline);
-  border-radius: 12px;
+  border-radius: var(--radius-card);
   padding: 2.5rem 1.5rem;
   text-align: center;
   cursor: pointer;
@@ -136,8 +159,10 @@ h1 {
 }
 
 .dropzone-main {
+  font-family: var(--serif);
+  font-weight: 800;
   font-size: var(--text-lg);
-  font-weight: 600;
+  color: var(--black);
   margin-bottom: 0.3rem;
 }
 
@@ -167,7 +192,7 @@ h1 {
   align-items: center;
   gap: 0.2rem;
   padding: 0.25rem 0.55rem;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   border: 1px solid var(--hairline);
   background: var(--white);
   font-family: inherit;
@@ -229,7 +254,7 @@ h1 {
   background: var(--white);
   border: 1px solid var(--hairline);
   border-radius: 6px;
-  color: var(--text);
+  color: var(--black);
   font-family: var(--mono);
   font-size: var(--text-sm);
   transition: border-color 0.15s;
@@ -264,20 +289,23 @@ h1 {
   align-items: center;
   gap: 0.4rem;
   padding: 0.45rem 0.85rem;
-  border-radius: 8px;
-  border: 1px solid var(--primary);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--hairline);
   background: var(--white);
   color: var(--primary);
   font-family: inherit;
   font-size: var(--text-sm);
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.15s, border-color 0.15s;
 }
 
-.file-input-label:hover { background: var(--lavender-soft); }
+.file-input-label:hover {
+  background: var(--lavender-soft);
+  border-color: var(--primary);
+}
 
-/* ═══ Results area ═════════════════════════════════════════════════════════ */
+/* ═══ Results ══════════════════════════════════════════════════════════════ */
 
 .results { margin-top: 1.5rem; }
 
@@ -304,42 +332,34 @@ h1 {
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ═══ Verdict banner ═══════════════════════════════════════════════════════ */
+/* ═══ Verdict ══════════════════════════════════════════════════════════════ */
 
 .verdict {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1rem;
-  border-radius: 10px;
+  border-radius: 12px;
   font-size: var(--text-lg);
   font-weight: 700;
+  font-family: var(--serif);
 }
 
 .verdict-icon { width: 1.3rem; height: 1.3rem; flex-shrink: 0; }
 .inline-icon { width: 1em; height: 1em; vertical-align: -0.15em; }
 
-.verdict-ok {
-  background: var(--lavender-soft);
-  color: var(--primary);
-}
-.verdict-warn {
-  background: var(--alert-tint);
-  color: var(--alert);
-}
-.verdict-none, .verdict-err {
-  background: var(--card);
-  color: var(--muted);
-}
+.verdict-ok { background: var(--lavender-soft); color: var(--primary); }
+.verdict-warn { background: var(--alert-tint); color: var(--alert); }
+.verdict-none, .verdict-err { background: var(--lavender-wash); color: var(--muted); }
 
-/* ═══ Summary card ═════════════════════════════════════════════════════════ */
+/* ═══ Summary ══════════════════════════════════════════════════════════════ */
 
 .summary-card {
   margin: 0.75rem 0 0;
   padding: 0;
 }
 
-/* ═══ Key-value rows ═══════════════════════════════════════════════════════ */
+/* ═══ Key-value ════════════════════════════════════════════════════════════ */
 
 .kv {
   display: flex;
@@ -366,7 +386,7 @@ h1 {
 
 .btn {
   padding: 0.45rem 0.85rem;
-  border-radius: 8px;
+  border-radius: var(--radius-pill);
   border: 1px solid var(--primary);
   background: var(--primary);
   color: var(--white);
@@ -385,9 +405,13 @@ h1 {
 .btn-secondary {
   background: var(--white);
   color: var(--primary);
+  border-color: var(--hairline);
 }
 
-.btn-secondary:hover { background: var(--lavender-soft); }
+.btn-secondary:hover {
+  background: var(--lavender-soft);
+  border-color: var(--primary);
+}
 
 .actions {
   display: flex;
@@ -396,13 +420,13 @@ h1 {
   flex-wrap: wrap;
 }
 
-/* ═══ Asset history card ═══════════════════════════════════════════════════ */
+/* ═══ Asset history ════════════════════════════════════════════════════════ */
 
 .match {
   margin-top: 1rem;
   padding: 0.75rem 1rem;
   border: 1px solid var(--hairline);
-  border-radius: 10px;
+  border-radius: var(--radius-card);
 }
 
 .match-head {
@@ -475,6 +499,7 @@ h1 {
 .event-label {
   font-weight: 600;
   font-size: var(--text-base);
+  color: var(--black);
 }
 
 .event-when {
@@ -496,7 +521,7 @@ h1 {
 .role-badge {
   font-size: 0.7rem;
   font-weight: 600;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   padding: 0.05rem 0.45rem;
   white-space: nowrap;
 }
@@ -530,7 +555,7 @@ h1 {
   margin-top: 1rem;
   padding: 0.65rem 0.85rem;
   border-left: 3px solid var(--primary);
-  background: var(--lavender-soft);
+  background: var(--lavender-wash);
   color: var(--text);
   font-size: var(--text-sm);
   line-height: 1.5;
@@ -643,7 +668,7 @@ h1 {
   gap: 0.5rem;
   padding: 0.4rem 0.5rem;
   border: 1px solid var(--hairline);
-  border-radius: 8px;
+  border-radius: 10px;
   margin-bottom: 0.3rem;
   cursor: pointer;
   font-size: var(--text-sm);
@@ -692,7 +717,6 @@ h1 {
 /* ═══ Footer ══════════════════════════════════════════════════════════════ */
 
 .site-footer {
-  margin-top: 3rem;
   background: var(--lavender);
 }
 
@@ -712,14 +736,14 @@ h1 {
   align-items: center;
   gap: 0.45rem;
   font-size: var(--text-sm);
-  color: var(--text);
+  color: var(--black);
 }
 
 .footer-copy { opacity: 0.7; }
 .footer-sep { opacity: 0.25; }
 
 .footer-link {
-  color: var(--text);
+  color: var(--black);
   opacity: 0.5;
   text-decoration: none;
   transition: opacity 0.2s;
@@ -734,7 +758,7 @@ h1 {
 }
 
 .footer-social a {
-  color: var(--text);
+  color: var(--black);
   opacity: 0.5;
   transition: opacity 0.2s;
   display: flex;
