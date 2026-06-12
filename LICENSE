@@ -1,14 +1,13 @@
 ar-io-proof-checker is licensed under the Business Source License 1.1
-(reproduced below), with the following per-directory exception, licensed
-under the MIT License (see the LICENSE file inside the directory, and the
-MIT License text at the end of this file):
+(reproduced below).
 
-  packages/proof/   MIT  (TypeScript cryptographic kernel; publishes as @ar.io/proof)
-
-Rationale for the exception: any third party must be able to write, audit,
-and ship a conformant verifier without Business Source License terms touching
-their code (ar-io-agent docs/distribution.md section 1; architecture standard
-K2). Verification is never license-gated.
+This repository is the web application only. The verification kernel it uses is
+NOT part of this repository: it is the separately MIT-licensed @ar.io/proof
+(https://github.com/ar-io/ar-io-proof), consumed as an npm dependency.
+Verification is never license-gated — any third party can write, audit, and
+ship a conformant verifier under MIT, with no Business Source License terms
+touching their code (ar-io-agent docs/distribution.md section 1; architecture
+standard K2).
 
 -----------------------------------------------------------------------------
 
@@ -115,28 +114,3 @@ other recipients of the licensed work to be provided by Licensor:
 3. To specify a Change Date.
 
 4. Not to modify this License in any other way.
-
------------------------------------------------------------------------------
-
-MIT License (applies only to the packages/proof/ directory enumerated at the
-top of this file, as an exception to the Business Source License 1.1 above)
-
-Copyright (c) 2026 ar.io
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
