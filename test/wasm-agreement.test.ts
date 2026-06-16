@@ -47,13 +47,35 @@ function signedEnvelope(v: Vector): Envelope {
   };
 }
 
-// Both verifiers, same input; assert the verdicts agree (and match `expectOk`
-// where the correct answer is known).
+// Both verifiers, same input; assert the `ok` verdicts agree (and match
+// `expectOk`). Used for the adversarial NEGATIVES: the Go kernel is fail-FAST
+// (stops at the first failed check), so the WASM adapter's per-check tri-state
+// is a fail-CLOSED approximation that legitimately differs from the JS
+// verifier's exhaustive tri-state on multi-failure inputs (e.g. an unknown
+// spec_version short-circuits before payload is checked). `ok` is the
+// load-bearing cross-kernel invariant on that path.
 async function agree(env: Envelope, expectOk: boolean, label: string): Promise<void> {
   const js = await verifyEnvelope(env);
   const wasm = await verifyEnvelopeWasm(env, undefined, wasmBytes);
   expect(wasm.ok, `${label}: JS=${js.ok} WASM=${wasm.ok} (wasm errors: ${wasm.errors})`).toBe(js.ok);
   expect(js.ok, `${label}: expected ok=${expectOk} (js errors: ${js.errors})`).toBe(expectOk);
+}
+
+// Stronger check for the SUCCESS / undetermined path (no failure
+// short-circuit, so both verifiers reach every check): assert the FULL
+// tri-state agrees — specVersionOk, payloadHashOk (incl. the null
+// "semantics-undetermined" value for external commitment), and signatureOk.
+async function agreeTriState(env: Envelope, label: string): Promise<void> {
+  const js = await verifyEnvelope(env);
+  const wasm = await verifyEnvelopeWasm(env, undefined, wasmBytes);
+  expect(js.ok, `${label}: JS rejected a valid envelope: ${js.errors}`).toBe(true);
+  expect(wasm.ok, `${label}: WASM=${wasm.ok} vs JS=${js.ok} (wasm: ${wasm.errors})`).toBe(js.ok);
+  expect(wasm.specVersionOk, `${label}: specVersionOk`).toBe(js.specVersionOk);
+  expect(
+    wasm.payloadHashOk,
+    `${label}: payloadHashOk (JS=${js.payloadHashOk} WASM=${wasm.payloadHashOk})`,
+  ).toBe(js.payloadHashOk);
+  expect(wasm.signatureOk, `${label}: signatureOk`).toBe(js.signatureOk);
 }
 
 const vectors = loadVectors();
@@ -77,16 +99,43 @@ describe("JS↔WASM agreement: conformance corpus (positives)", () => {
   });
 
   for (const v of vectors) {
-    it(`${v.vector_id}: both verify`, async () => {
-      await agree(signedEnvelope(v), true, v.vector_id);
+    it(`${v.vector_id}: both verify (full tri-state agrees)`, async () => {
+      await agreeTriState(signedEnvelope(v), v.vector_id);
     });
 
     it(`${v.vector_id} + co_signatures: both verify (signed scope excludes it)`, async () => {
       const env = signedEnvelope(v);
       env.co_signatures = [{ public_key: "ab".repeat(32), signature: "cd".repeat(64) }];
-      await agree(env, true, `${v.vector_id}+cosig`);
+      await agreeTriState(env, `${v.vector_id}+cosig`);
     });
   }
+});
+
+// External commitment (envelope-spec §3) — the path where payloadHashOk is
+// `null` (signature-valid, semantics-undetermined). A signed ario.events/v1
+// envelope carries NO inline payload; verified without its committed record,
+// both kernels must accept it AND report payloadHashOk=null. This is the case
+// the @ar.io/proof@0.2.0 tri-state widening exists for, and the reason the
+// WASM bridge now returns `hasPayload`.
+describe("JS↔WASM agreement: external commitment (tri-state incl. null)", () => {
+  const eventsVector = JSON.parse(
+    readFileSync(`${vectorsDir}events-event-01.json`, "utf8"),
+  ) as { spec_version: string; expected_outputs: { envelope_jcs_bytes_hex: string } };
+  const eventsEnv = JSON.parse(
+    Buffer.from(eventsVector.expected_outputs.envelope_jcs_bytes_hex, "hex").toString("utf8"),
+  ) as Envelope;
+
+  it("is an ario.events/v1 external-commitment envelope (no inline payload)", () => {
+    expect(eventsVector.spec_version).toBe("ario.events/v1");
+    expect("payload" in eventsEnv).toBe(false);
+  });
+
+  it("both accept signature-only and report payloadHashOk=null, full tri-state agrees", async () => {
+    const js = await verifyEnvelope(eventsEnv);
+    expect(js.ok).toBe(true);
+    expect(js.payloadHashOk, "JS: external commitment, no record → undetermined").toBe(null);
+    await agreeTriState(eventsEnv, "events-event-01 external-commitment");
+  });
 });
 
 describe("JS↔WASM agreement: adversarial negatives", () => {

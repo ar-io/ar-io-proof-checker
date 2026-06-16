@@ -116,7 +116,7 @@ export function buildReport(report: ProvenanceReport): ProofCheckReport {
       note: h.note,
       events: h.events.map((e) => ({
         tx_id: e.txId,
-        event_type: e.envelope.event_type,
+        event_type: e.envelope.event_type ?? "unknown",
         signed_at: e.envelope.signed_at,
         block_timestamp: e.blockTimestamp,
         matched_role: e.matchedRole,
@@ -132,7 +132,10 @@ function toReportMatch(m: Match): ReportMatch {
   const subject = m.envelope.subject as { tenant_id?: unknown; agent_id?: unknown } | undefined;
   return {
     tx_id: m.txId,
-    event_type: m.envelope.event_type,
+    // event_type is optional on the family Envelope (Minimal-disclosure
+    // profiles omit it); agent envelopes always carry it, so the fallback is
+    // only reached for non-agent inputs.
+    event_type: m.envelope.event_type ?? "unknown",
     tenant_id: typeof subject?.tenant_id === "string" ? subject.tenant_id : "unknown",
     agent_id: typeof subject?.agent_id === "string" ? subject.agent_id : "unknown",
     signing_key: m.envelope.public_key,

@@ -330,8 +330,11 @@ function chainStatus(chain: AssetEvent[]): ChainContinuity {
   let unresolved = 0;
   for (const e of chain) {
     const prev = e.envelope.previous_hash;
+    // previous_hash is optional on the 0.2.0 family Envelope (Minimal mode
+    // keeps the chain pointer in the payload); agent envelopes always carry
+    // it. A missing pointer is an unresolved link, same as a dangling one.
     if (prev === "GENESIS") genesisRoots++;
-    else if (!byPayloadHash.has(prev)) unresolved++;
+    else if (prev === undefined || !byPayloadHash.has(prev)) unresolved++;
   }
   if (unresolved > 0 || genesisRoots !== 1) return "partial";
   return "linked";

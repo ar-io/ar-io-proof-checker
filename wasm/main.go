@@ -17,18 +17,24 @@ import (
 )
 
 // verifyEnvelope takes one argument — the envelope as a JSON string — and
-// returns {ok: bool, error: string|null}. pkg/proof.VerifyEnvelope is
-// all-or-nothing by design (fail-fast with a reason), so the granular
-// per-check booleans of the JS VerificationResult are derived in the adapter
-// from the error text, fail-closed.
+// returns {ok: bool, error: string|null, hasPayload: bool}. pkg/proof.Verify-
+// Envelope is all-or-nothing by design (fail-fast with a reason), so the
+// granular per-check booleans of the JS VerificationResult are derived in the
+// adapter from the error text, fail-closed. `hasPayload` reports whether the
+// verified envelope carried an inline `payload` — the adapter needs it to
+// distinguish a fully-bound inline verdict (payloadHashOk=true) from an
+// external-commitment one verified signature-only (payloadHashOk=null,
+// "semantics-undetermined"), matching the JS verifier's tri-state.
 func verifyEnvelope(_ js.Value, args []js.Value) any {
 	if len(args) != 1 || args[0].Type() != js.TypeString {
-		return map[string]any{"ok": false, "error": "verifyEnvelope expects one JSON-string argument"}
+		return map[string]any{"ok": false, "error": "verifyEnvelope expects one JSON-string argument", "hasPayload": false}
 	}
-	if _, err := proof.VerifyEnvelope([]byte(args[0].String())); err != nil {
-		return map[string]any{"ok": false, "error": err.Error()}
+	env, err := proof.VerifyEnvelope([]byte(args[0].String()))
+	if err != nil {
+		return map[string]any{"ok": false, "error": err.Error(), "hasPayload": false}
 	}
-	return map[string]any{"ok": true, "error": nil}
+	_, hasPayload := env["payload"]
+	return map[string]any{"ok": true, "error": nil, "hasPayload": hasPayload}
 }
 
 func main() {
