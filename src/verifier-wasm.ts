@@ -19,6 +19,11 @@ import wasmUrl from "./wasm/ario-proof.wasm?url";
 interface GoVerdict {
   ok: boolean;
   error: string | null;
+  // Whether the verified envelope carried an inline `payload` — lets the
+  // adapter report payloadHashOk=null (semantics-undetermined) for an
+  // external-commitment envelope verified signature-only, matching the JS
+  // verifier's tri-state. Absent (older binaries) ⇒ treated as inline (true).
+  hasPayload?: boolean;
 }
 
 interface GoApi {
@@ -112,7 +117,14 @@ export async function verifyEnvelopeWasm(
 }
 
 function classify(v: GoVerdict): Pick<VerificationResult, "specVersionOk" | "payloadHashOk" | "signatureOk"> {
-  if (v.ok) return { specVersionOk: true, payloadHashOk: true, signatureOk: true };
+  if (v.ok) {
+    // Inline payload → fully bound (true). External-commitment verified
+    // signature-only (no inline payload) → semantics-undetermined (null),
+    // matching @ar.io/proof's tri-state. `hasPayload === false` is the only
+    // value that yields null; absent (older binary) defaults to inline.
+    const payloadHashOk = v.hasPayload === false ? null : true;
+    return { specVersionOk: true, payloadHashOk, signatureOk: true };
+  }
   const e = v.error ?? "";
   if (e.includes("unsupported spec_version")) {
     return { specVersionOk: false, payloadHashOk: false, signatureOk: false };

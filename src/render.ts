@@ -41,7 +41,10 @@ const VERDICT_COPY: Record<Verdict, { title: string; tone: string }> = {
   error: { title: "Lookup failed — verdict unknown", tone: "err" },
 };
 
-function humanEventType(raw: string): string {
+function humanEventType(raw: string | undefined): string {
+  // event_type is optional on the 0.2.0 family Envelope (Minimal-disclosure
+  // profiles omit it); agent envelopes always carry it.
+  if (!raw) return "unknown";
   const map: Record<string, string> = {
     asset_registered: "Asset registered",
     tamper_detected: "Tamper detected",

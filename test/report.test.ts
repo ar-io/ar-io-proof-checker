@@ -15,7 +15,7 @@ import {
   reportToJson,
   verifyReport,
 } from "../src/report";
-import type { Envelope } from "../src/types";
+import type { Envelope, Subject } from "../src/types";
 
 interface Vector {
   inputs: { envelope_pre_signature: Record<string, unknown> };
@@ -132,7 +132,9 @@ describe("reportToHtml", () => {
 
   it("HTML-escapes on-chain-derived strings (no injection from a hostile envelope)", async () => {
     const evil = JSON.parse(JSON.stringify(registered)) as Envelope;
-    evil.subject = { ...evil.subject, agent_id: "<script>alert(1)</script>" };
+    // `subject` is optional on the 0.2.0 family Envelope; this fixture is an
+    // agent envelope that always carries it (cast keeps `type` required).
+    evil.subject = { ...(evil.subject as Subject), agent_id: "<script>alert(1)</script>" };
     // (signature won't match, but reportToHtml is pure presentation — we only
     // assert escaping here, not verification.)
     stubGoodFetch(evil);
