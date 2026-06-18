@@ -91,7 +91,7 @@ ordinary dependency. It's the TypeScript verification kernel, homed in
 alongside the Python kernel, the family specs, and the authoritative corpus). Using a *published,
 independently conformance-tested* kernel — not bundled app code — is what demonstrates the
 product's core claim: auditor-independent verification with no ar.io code in the trust path.
-Conformance (every kernel reproduces the `test-vectors-v1.0` corpus byte-for-byte) is enforced in
+Conformance (every kernel reproduces the `test-vectors-v1.2` corpus byte-for-byte) is enforced in
 `ar-io-proof`'s CI; this app just consumes the result.
 
 The app also depends on [`ar-io-agent`](https://github.com/ar-io/ar-io-agent) **for specification
